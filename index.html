@@ -111,7 +111,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const DATA_DOC = doc(db, "astmalaake", "data");
-const PIN_DOC  = doc(db, "astmalaake", "astmalaake", "pin", "pin");
+const PIN_DOC  = doc(db, "astmalaake", "pin");
 const PIN_SESSION_KEY = "astmalaake_pin_ok";
 
 let data = { startDate: null, doses: {} };
@@ -330,46 +330,36 @@ function render(){
 // PIN (Firebasesta)
 // ============================
 let pinBuffer = "";
-let pinChecking = false; // Lukko: estetään päällekkäiset tarkistukset
 
 function renderPinDots(){
     document.querySelectorAll('.pin-dot').forEach((d,i) => d.classList.toggle('filled', i < pinBuffer.length));
 }
 
 async function checkPin(){
-    if(pinChecking) return; // Jos tarkistus jo käynnissä, ei tehdä uutta
-    pinChecking = true;
-
-    const enteredPin = pinBuffer; // Tallennetaan heti omaan muuttujaan
-    pinBuffer = "";               // Nollataan buffer välittömästi
-    renderPinDots();
-
     const err = document.getElementById('pinError');
     try {
         const snap = await getDoc(PIN_DOC);
-        if(!snap.exists() || !snap.data().code){
-            // PIN-dokumenttia ei löydy — EI päästetä sisään, näytetään virhe
-            err.textContent = "PIN-koodi puuttuu Firebasesta";
-            pinChecking = false;
+        if(!snap.exists()){
+            document.getElementById('pinScreen').style.display = 'none';
+            loadFromFirebase();
             return;
         }
-        if(enteredPin === snap.data().code){
+        if(pinBuffer === snap.data().code){
             sessionStorage.setItem(PIN_SESSION_KEY, "1");
             document.getElementById('pinScreen').style.display = 'none';
             loadFromFirebase();
         } else {
             err.textContent = "Väärä PIN-koodi";
-            renderPinDots();
+            pinBuffer = "";
+            setTimeout(() => renderPinDots(), 300);
         }
     } catch(e){
         err.textContent = "Yhteysvirhe, yritä uudelleen";
-        renderPinDots();
+        pinBuffer = ""; renderPinDots();
     }
-    pinChecking = false;
 }
 
 function handlePinKey(v){
-    if(pinChecking) return; // Napit pois käytöstä tarkistuksen aikana
     const err = document.getElementById('pinError');
     if(v==='clear'){ pinBuffer=""; renderPinDots(); err.textContent=""; return; }
     if(v==='back'){ pinBuffer=pinBuffer.slice(0,-1); renderPinDots(); err.textContent=""; return; }

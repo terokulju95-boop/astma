@@ -111,7 +111,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const DATA_DOC = doc(db, "astmalaake", "data");
-const PIN_DOC  = doc(db, "astmalaake", "pin");
+const PIN_DOC  = doc(db, "astmalaake", "astmalaake", "pin", "pin");
 const PIN_SESSION_KEY = "astmalaake_pin_ok";
 
 let data = { startDate: null, doses: {} };

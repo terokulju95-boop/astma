@@ -42,10 +42,8 @@
         .day-date { font-weight:bold; color:#333; }
         .day-status { font-size:20px; }
 
-        /* Tallennusindikaattori */
         #saveStatus { position:fixed; top:0; left:0; right:0; padding:8px; text-align:center; font-size:13px; font-weight:700; z-index:9998; transition:opacity 0.5s; opacity:0; }
 
-        /* Kirjautumisruutu */
         #loginScreen {
             position:fixed; inset:0;
             background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
@@ -73,8 +71,8 @@
         .google-btn:hover { box-shadow:0 2px 12px rgba(0,0,0,0.15); border-color:#aaa; }
         .google-btn:disabled { opacity:0.5; cursor:not-allowed; }
         .login-error { color:#dc3545; font-size:13px; font-weight:700; margin-top:14px; min-height:20px; }
+        .login-info { color:#667eea; font-size:13px; margin-top:14px; min-height:20px; }
 
-        /* Käyttäjäpalkki */
         .user-bar {
             display:flex; justify-content:space-between; align-items:center;
             background:#f0f4ff; border-radius:10px; padding:10px 14px;
@@ -91,7 +89,6 @@
 </head>
 <body>
 
-<!-- Kirjautumisruutu -->
 <div id="loginScreen">
     <div class="login-box">
         <div class="login-title">💊 Astmalääke</div>
@@ -106,10 +103,10 @@
             Kirjaudu Google-tilillä
         </button>
         <div class="login-error" id="loginError"></div>
+        <div class="login-info" id="loginInfo"></div>
     </div>
 </div>
 
-<!-- Tallennusindikaattori -->
 <div id="saveStatus"></div>
 
 <div class="container">
@@ -128,6 +125,8 @@ import {
     getAuth,
     GoogleAuthProvider,
     signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
     signOut,
     onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -151,6 +150,24 @@ let data = { startDate: null, doses: {} };
 let isSaving = false;
 let unsubSnapshot = null;
 
+// Tunnista mobiili
+function isMobile(){
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+// ============================
+// Tarkista redirect-tulos sivun latautuessa
+// ============================
+getRedirectResult(auth).then(result => {
+    if(result && result.user){
+        // Redirect onnistui — onAuthStateChanged hoitaa loput
+        document.getElementById('loginInfo').textContent = '';
+    }
+}).catch(e => {
+    console.error('Redirect error:', e);
+    document.getElementById('loginError').textContent = 'Kirjautuminen epäonnistui. Yritä uudelleen.';
+});
+
 // ============================
 // AUTH STATE
 // ============================
@@ -169,18 +186,28 @@ onAuthStateChanged(auth, user => {
 });
 
 // ============================
-// GOOGLE-KIRJAUTUMINEN
+// KIRJAUTUMINEN
 // ============================
 window.handleGoogleLogin = async () => {
-    const btn = document.getElementById('googleBtn');
-    const err = document.getElementById('loginError');
+    const btn  = document.getElementById('googleBtn');
+    const err  = document.getElementById('loginError');
+    const info = document.getElementById('loginInfo');
     btn.disabled = true;
-    err.textContent = '';
+    err.textContent  = '';
+    info.textContent = '';
+
     try {
-        await signInWithPopup(auth, provider);
-        // onAuthStateChanged hoitaa loput
+        if(isMobile()){
+            // Mobiililla käytetään redirectiä
+            info.textContent = 'Siirrytään Google-kirjautumiseen...';
+            await signInWithRedirect(auth, provider);
+        } else {
+            // Työpöydällä popup toimii paremmin
+            await signInWithPopup(auth, provider);
+        }
     } catch(e){
         btn.disabled = false;
+        info.textContent = '';
         if(e.code === 'auth/popup-closed-by-user'){
             err.textContent = 'Kirjautuminen peruutettu.';
         } else {

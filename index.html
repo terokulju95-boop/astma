@@ -70,7 +70,13 @@
         }
         .google-btn:hover { box-shadow:0 2px 12px rgba(0,0,0,0.15); border-color:#aaa; }
         .google-btn:disabled { opacity:0.5; cursor:not-allowed; }
-        .login-error { color:#dc3545; font-size:13px; font-weight:700; margin-top:14px; min-height:20px; }
+        .login-error {
+            color:#dc3545; font-size:12px; font-weight:700;
+            margin-top:14px; min-height:20px;
+            word-break:break-all; text-align:left;
+            background:#fff5f5; border-radius:8px;
+            padding:8px; display:none;
+        }
         .login-info { color:#667eea; font-size:13px; margin-top:14px; min-height:20px; }
 
         .user-bar {
@@ -150,22 +156,35 @@ let data = { startDate: null, doses: {} };
 let isSaving = false;
 let unsubSnapshot = null;
 
-// Tunnista mobiili
-function isMobile(){
-    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+function showError(msg){
+    const el = document.getElementById('loginError');
+    el.textContent = msg;
+    el.style.display = msg ? 'block' : 'none';
+}
+function showInfo(msg){
+    document.getElementById('loginInfo').textContent = msg;
 }
 
 // ============================
-// Tarkista redirect-tulos sivun latautuessa
+// Tarkista redirect-tulos
 // ============================
+if(sessionStorage.getItem('pendingRedirect')){
+    showInfo('⏳ Tarkistetaan kirjautuminen...');
+    document.getElementById('googleBtn').disabled = true;
+}
+
 getRedirectResult(auth).then(result => {
-    if(result && result.user){
-        // Redirect onnistui — onAuthStateChanged hoitaa loput
-        document.getElementById('loginInfo').textContent = '';
-    }
+    sessionStorage.removeItem('pendingRedirect');
+    showInfo('');
+    document.getElementById('googleBtn').disabled = false;
+    // Jos result on null, redirect ei ole tapahtunut — ei virhettä
 }).catch(e => {
+    sessionStorage.removeItem('pendingRedirect');
+    document.getElementById('googleBtn').disabled = false;
+    showInfo('');
+    // Näytä virhekoodi debuggausta varten
+    showError('Virhe: ' + (e.code || e.message));
     console.error('Redirect error:', e);
-    document.getElementById('loginError').textContent = 'Kirjautuminen epäonnistui. Yritä uudelleen.';
 });
 
 // ============================
@@ -189,31 +208,22 @@ onAuthStateChanged(auth, user => {
 // KIRJAUTUMINEN
 // ============================
 window.handleGoogleLogin = async () => {
-    const btn  = document.getElementById('googleBtn');
-    const err  = document.getElementById('loginError');
-    const info = document.getElementById('loginInfo');
+    const btn = document.getElementById('googleBtn');
     btn.disabled = true;
-    err.textContent  = '';
-    info.textContent = '';
+    showError('');
+    showInfo('');
 
     try {
-        if(isMobile()){
-            // Mobiililla käytetään redirectiä
-            info.textContent = 'Siirrytään Google-kirjautumiseen...';
-            await signInWithRedirect(auth, provider);
-        } else {
-            // Työpöydällä popup toimii paremmin
-            await signInWithPopup(auth, provider);
-        }
+        // Käytä aina redirectiä — toimii sekä mobiililla että desktopilla
+        showInfo('⏳ Siirrytään Google-kirjautumiseen...');
+        sessionStorage.setItem('pendingRedirect', '1');
+        await signInWithRedirect(auth, provider);
     } catch(e){
+        sessionStorage.removeItem('pendingRedirect');
         btn.disabled = false;
-        info.textContent = '';
-        if(e.code === 'auth/popup-closed-by-user'){
-            err.textContent = 'Kirjautuminen peruutettu.';
-        } else {
-            err.textContent = 'Kirjautuminen epäonnistui. Yritä uudelleen.';
-            console.error(e);
-        }
+        showInfo('');
+        showError('Virhe: ' + (e.code || e.message));
+        console.error(e);
     }
 };
 

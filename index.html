@@ -44,47 +44,47 @@
 
         #saveStatus { position:fixed; top:0; left:0; right:0; padding:8px; text-align:center; font-size:13px; font-weight:700; z-index:9998; transition:opacity 0.5s; opacity:0; }
 
+        /* Kirjautumisruutu */
         #loginScreen {
             position:fixed; inset:0;
             background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
-            display:flex; flex-direction:column;
-            align-items:center; justify-content:center;
+            display:flex; align-items:center; justify-content:center;
             z-index:9999; padding:20px;
         }
         .login-box {
             background:white; border-radius:20px;
-            padding:40px 32px; width:100%; max-width:360px;
+            padding:36px 28px; width:100%; max-width:360px;
             box-shadow:0 20px 60px rgba(0,0,0,0.3);
-            text-align:center;
         }
-        .login-title { font-size:28px; font-weight:800; color:#667eea; margin-bottom:8px; }
-        .login-sub { font-size:15px; color:#888; margin-bottom:32px; }
-        .google-btn {
-            display:flex; align-items:center; justify-content:center; gap:12px;
-            width:100%; padding:14px 20px;
-            background:white; color:#3c4043;
-            border:2px solid #dadce0; border-radius:12px;
-            font-size:16px; font-weight:600; cursor:pointer;
-            transition:box-shadow 0.2s, border-color 0.2s;
-            margin-bottom:0;
+        .login-title { font-size:26px; font-weight:800; color:#667eea; text-align:center; margin-bottom:6px; }
+        .login-sub { font-size:14px; color:#888; text-align:center; margin-bottom:24px; }
+        .login-box label { display:block; font-size:13px; font-weight:700; color:#444; margin-bottom:5px; }
+        .login-box input[type="email"],
+        .login-box input[type="password"] {
+            width:100%; padding:12px 14px;
+            border:2px solid #ddd; border-radius:10px;
+            font-size:16px; margin-bottom:14px;
+            transition:border 0.2s; outline:none;
         }
-        .google-btn:hover { box-shadow:0 2px 12px rgba(0,0,0,0.15); border-color:#aaa; }
-        .google-btn:disabled { opacity:0.5; cursor:not-allowed; }
-        .login-error {
-            color:#dc3545; font-size:12px; font-weight:700;
-            margin-top:14px; min-height:20px;
-            word-break:break-all; text-align:left;
-            background:#fff5f5; border-radius:8px;
-            padding:8px; display:none;
+        .login-box input:focus { border-color:#667eea; }
+        .login-btn {
+            width:100%; padding:14px;
+            background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+            color:white; border:none; border-radius:10px;
+            font-size:17px; font-weight:700;
+            cursor:pointer; transition:opacity 0.2s; margin-bottom:0;
         }
-        .login-info { color:#667eea; font-size:13px; margin-top:14px; min-height:20px; }
+        .login-btn:hover { opacity:0.9; }
+        .login-btn:disabled { opacity:0.5; cursor:not-allowed; }
+        .login-error { color:#dc3545; font-size:13px; font-weight:700; text-align:center; margin-top:12px; min-height:20px; }
 
+        /* Käyttäjäpalkki */
         .user-bar {
             display:flex; justify-content:space-between; align-items:center;
             background:#f0f4ff; border-radius:10px; padding:10px 14px;
             margin-bottom:20px; font-size:13px; color:#555;
         }
-        .user-bar span { font-weight:600; color:#667eea; }
+        .user-bar span { font-weight:600; color:#667eea; font-size:12px; }
         .logout-btn {
             background:none; border:none; color:#dc3545;
             font-size:13px; font-weight:700; cursor:pointer;
@@ -95,21 +95,20 @@
 </head>
 <body>
 
+<!-- Kirjautumisruutu -->
 <div id="loginScreen">
     <div class="login-box">
         <div class="login-title">💊 Astmalääke</div>
         <div class="login-sub">Kirjaudu sisään jatkaaksesi</div>
-        <button class="google-btn" id="googleBtn" onclick="handleGoogleLogin()">
-            <svg width="22" height="22" viewBox="0 0 48 48">
-                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-            </svg>
-            Kirjaudu Google-tilillä
-        </button>
+
+        <label for="emailInput">Sähköposti</label>
+        <input type="email" id="emailInput" placeholder="sinun@email.fi" autocomplete="username">
+
+        <label for="passwordInput">Salasana</label>
+        <input type="password" id="passwordInput" placeholder="••••••••" autocomplete="current-password">
+
+        <button class="login-btn" id="loginBtn" onclick="handleLogin()">Kirjaudu sisään</button>
         <div class="login-error" id="loginError"></div>
-        <div class="login-info" id="loginInfo"></div>
     </div>
 </div>
 
@@ -129,10 +128,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import {
     getAuth,
-    GoogleAuthProvider,
-    signInWithPopup,
-    signInWithRedirect,
-    getRedirectResult,
+    signInWithEmailAndPassword,
     signOut,
     onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -149,43 +145,11 @@ const firebaseConfig = {
 const app      = initializeApp(firebaseConfig);
 const db       = getFirestore(app);
 const auth     = getAuth(app);
-const provider = new GoogleAuthProvider();
 const DATA_DOC = doc(db, "astmalaake", "data");
 
 let data = { startDate: null, doses: {} };
 let isSaving = false;
 let unsubSnapshot = null;
-
-function showError(msg){
-    const el = document.getElementById('loginError');
-    el.textContent = msg;
-    el.style.display = msg ? 'block' : 'none';
-}
-function showInfo(msg){
-    document.getElementById('loginInfo').textContent = msg;
-}
-
-// ============================
-// Tarkista redirect-tulos
-// ============================
-if(sessionStorage.getItem('pendingRedirect')){
-    showInfo('⏳ Tarkistetaan kirjautuminen...');
-    document.getElementById('googleBtn').disabled = true;
-}
-
-getRedirectResult(auth).then(result => {
-    sessionStorage.removeItem('pendingRedirect');
-    showInfo('');
-    document.getElementById('googleBtn').disabled = false;
-    // Jos result on null, redirect ei ole tapahtunut — ei virhettä
-}).catch(e => {
-    sessionStorage.removeItem('pendingRedirect');
-    document.getElementById('googleBtn').disabled = false;
-    showInfo('');
-    // Näytä virhekoodi debuggausta varten
-    showError('Virhe: ' + (e.code || e.message));
-    console.error('Redirect error:', e);
-});
 
 // ============================
 // AUTH STATE
@@ -194,7 +158,7 @@ onAuthStateChanged(auth, user => {
     if(user){
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('userBar').style.display = 'flex';
-        document.getElementById('userEmail').textContent = user.email || user.displayName;
+        document.getElementById('userEmail').textContent = user.email;
         loadFromFirebase();
     } else {
         document.getElementById('loginScreen').style.display = 'flex';
@@ -207,33 +171,42 @@ onAuthStateChanged(auth, user => {
 // ============================
 // KIRJAUTUMINEN
 // ============================
-window.handleGoogleLogin = async () => {
-    const btn = document.getElementById('googleBtn');
+window.handleLogin = async () => {
+    const email    = document.getElementById('emailInput').value.trim();
+    const password = document.getElementById('passwordInput').value;
+    const btn      = document.getElementById('loginBtn');
+    const err      = document.getElementById('loginError');
+
+    if(!email || !password){ err.textContent = "Syötä sähköposti ja salasana."; return; }
+
     btn.disabled = true;
-    showError('');
-    showInfo('');
+    btn.textContent = "Kirjaudutaan...";
+    err.textContent = "";
 
     try {
-        // Käytä aina redirectiä — toimii sekä mobiililla että desktopilla
-        showInfo('⏳ Siirrytään Google-kirjautumiseen...');
-        sessionStorage.setItem('pendingRedirect', '1');
-        await signInWithRedirect(auth, provider);
+        await signInWithEmailAndPassword(auth, email, password);
     } catch(e){
-        sessionStorage.removeItem('pendingRedirect');
         btn.disabled = false;
-        showInfo('');
-        showError('Virhe: ' + (e.code || e.message));
-        console.error(e);
+        btn.textContent = "Kirjaudu sisään";
+        if(e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found'){
+            err.textContent = "Väärä sähköposti tai salasana.";
+        } else if(e.code === 'auth/too-many-requests'){
+            err.textContent = "Liian monta yritystä. Yritä myöhemmin.";
+        } else {
+            err.textContent = "Kirjautuminen epäonnistui. (" + e.code + ")";
+        }
     }
 };
+
+// Enter-näppäin
+document.getElementById('passwordInput').addEventListener('keydown', e => { if(e.key==='Enter') window.handleLogin(); });
+document.getElementById('emailInput').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('passwordInput').focus(); });
 
 // ============================
 // ULOSKIRJAUTUMINEN
 // ============================
 window.handleLogout = async () => {
-    if(confirm('Haluatko kirjautua ulos?')){
-        await signOut(auth);
-    }
+    if(confirm('Haluatko kirjautua ulos?')) await signOut(auth);
 };
 
 // ============================
@@ -284,7 +257,6 @@ async function loadFromFirebase(){
         showSaveStatus('⚠️ Yhteysvirhe – paikallinen data', '#f59e0b');
     }
     render();
-
     if(unsubSnapshot) unsubSnapshot();
     unsubSnapshot = onSnapshot(DATA_DOC, snap => {
         if(!snap.exists() || isSaving) return;
@@ -296,26 +268,17 @@ async function loadFromFirebase(){
 // APUFUNKTIOT
 // ============================
 function getTodayString(){ return new Date().toISOString().split('T')[0]; }
-
-function formatDate(dateStr){
-    const date = new Date(dateStr + 'T12:00:00');
-    return date.toLocaleDateString('fi-FI');
-}
-
+function formatDate(dateStr){ return new Date(dateStr+'T12:00:00').toLocaleDateString('fi-FI'); }
 function getDaysRemaining(){
     if(!data.startDate) return 100;
-    const start = new Date(data.startDate + 'T12:00:00');
-    const end = new Date(start);
-    end.setDate(end.getDate() + 100);
-    const diff = Math.ceil((end - new Date()) / (1000*60*60*24));
-    return Math.max(0, diff);
+    const end = new Date(data.startDate+'T12:00:00');
+    end.setDate(end.getDate()+100);
+    return Math.max(0, Math.ceil((end-new Date())/(1000*60*60*24)));
 }
-
 function getEndDate(){
     if(!data.startDate) return null;
-    const start = new Date(data.startDate + 'T12:00:00');
-    const end = new Date(start);
-    end.setDate(end.getDate() + 100);
+    const end = new Date(data.startDate+'T12:00:00');
+    end.setDate(end.getDate()+100);
     return end.toISOString().split('T')[0];
 }
 
@@ -324,67 +287,48 @@ function getEndDate(){
 // ============================
 window.startNewMedicine = async (dateStr) => {
     if(confirm('Haluatko varmasti aloittaa uuden lääkepakkauksen?')){
-        data.startDate = dateStr;
-        data.doses = {};
-        await saveData();
-        render();
+        data.startDate = dateStr; data.doses = {};
+        await saveData(); render();
     }
 };
-
 window.markDoseTaken = async () => {
-    const today = getTodayString();
-    data.doses[today] = true;
-    await saveData();
-    render();
+    data.doses[getTodayString()] = true;
+    await saveData(); render();
 };
-
-window.toggleHistory = () => {
-    document.getElementById('historyList').classList.toggle('show');
-};
-
+window.toggleHistory = () => document.getElementById('historyList').classList.toggle('show');
 window.exportData = () => {
-    const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'astmalaake-' + getTodayString() + '.json';
-    a.click();
-    URL.revokeObjectURL(a.href);
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+    a.download = 'astmalaake-'+getTodayString()+'.json';
+    a.click(); URL.revokeObjectURL(a.href);
 };
-
 window.importData = () => {
     const input = document.createElement('input');
-    input.type = 'file'; input.accept = 'application/json';
+    input.type='file'; input.accept='application/json';
     input.onchange = async e => {
-        const file = e.target.files[0];
         const reader = new FileReader();
         reader.onload = async evt => {
-            try {
-                data = JSON.parse(evt.target.result);
-                await saveData();
-                render();
-                alert('Tiedot tuotu onnistuneesti!');
-            } catch(err){ alert('Virhe tuotaessa tietoja!'); }
+            try { data=JSON.parse(evt.target.result); await saveData(); render(); alert('Tiedot tuotu!'); }
+            catch(err){ alert('Virhe tuotaessa tietoja!'); }
         };
-        reader.readAsText(file);
+        reader.readAsText(e.target.files[0]);
     };
     input.click();
 };
 
 function generateDayHistory(){
     if(!data.startDate) return '';
-    const start = new Date(data.startDate + 'T12:00:00');
-    const end = new Date(start); end.setDate(end.getDate() + 100);
+    const start = new Date(data.startDate+'T12:00:00');
+    const end = new Date(start); end.setDate(end.getDate()+100);
     const today = new Date();
-    let html = '';
-    let cur = new Date(end);
-    while(cur >= start){
-        const dateStr = cur.toISOString().split('T')[0];
-        const isFuture = cur > today;
-        const isTaken = data.doses[dateStr];
-        const cls = isFuture ? 'future' : isTaken ? 'taken' : 'missed';
-        const icon = isFuture ? '⏳' : isTaken ? '✅' : '❌';
-        html += `<div class="day-item ${cls}"><span class="day-date">${formatDate(dateStr)}</span><span class="day-status">${icon}</span></div>`;
-        cur.setDate(cur.getDate() - 1);
+    let html='', cur=new Date(end);
+    while(cur>=start){
+        const dateStr=cur.toISOString().split('T')[0];
+        const isFuture=cur>today, isTaken=data.doses[dateStr];
+        const cls=isFuture?'future':isTaken?'taken':'missed';
+        const icon=isFuture?'⏳':isTaken?'✅':'❌';
+        html+=`<div class="day-item ${cls}"><span class="day-date">${formatDate(dateStr)}</span><span class="day-status">${icon}</span></div>`;
+        cur.setDate(cur.getDate()-1);
     }
     return html;
 }
@@ -393,39 +337,29 @@ function generateDayHistory(){
 // RENDER
 // ============================
 function render(){
-    const appEl = document.getElementById('app');
-    const today = getTodayString();
-    const takenToday = data.doses[today];
-    const daysRemaining = getDaysRemaining();
-    const endDate = getEndDate();
-    let html = '';
-
+    const today=getTodayString(), takenToday=data.doses[today];
+    const daysRemaining=getDaysRemaining(), endDate=getEndDate();
+    let html='';
     if(!data.startDate){
-        html = `
-            <div class="new-medicine">
-                <h3>🆕 Aloita uusi lääkepakkaus</h3>
-                <input type="date" id="startDate" value="${today}">
-                <button class="btn-primary" onclick="startNewMedicine(document.getElementById('startDate').value)">Aloita seuranta</button>
+        html=`<div class="new-medicine"><h3>🆕 Aloita uusi lääkepakkaus</h3>
+            <input type="date" id="startDate" value="${today}">
+            <button class="btn-primary" onclick="startNewMedicine(document.getElementById('startDate').value)">Aloita seuranta</button>
             </div>`;
     } else {
-        html = `
-            <div class="status-card">
-                <h2>Lääke loppuu</h2>
-                <div class="big-number">${daysRemaining}</div>
-                <div class="label">päivän kuluttua</div>
-            </div>
-            ${daysRemaining <= 7 ? '<div class="warning">⚠️ Lääke loppuu pian! Tilaa uusi pakkaus.</div>' : ''}
-            ${takenToday ? '<div class="taken-today">✅ Olet ottanut tänään lääkkeen!</div>' : ''}
+        html=`<div class="status-card"><h2>Lääke loppuu</h2>
+            <div class="big-number">${daysRemaining}</div>
+            <div class="label">päivän kuluttua</div></div>
+            ${daysRemaining<=7?'<div class="warning">⚠️ Lääke loppuu pian! Tilaa uusi pakkaus.</div>':''}
+            ${takenToday?'<div class="taken-today">✅ Olet ottanut tänään lääkkeen!</div>':''}
             <div class="date-info">
                 <p><strong>Aloituspäivä:</strong> ${formatDate(data.startDate)}</p>
                 <p><strong>Loppumispäivä:</strong> ${formatDate(endDate)}</p>
                 <p><strong>Tänään:</strong> ${formatDate(today)}</p>
             </div>
-            <button class="btn-success" onclick="markDoseTaken()" ${takenToday ? 'disabled' : ''}>
-                ${takenToday ? '✅ Lääke otettu tänään' : '💊 Merkitse lääke otetuksi'}
+            <button class="btn-success" onclick="markDoseTaken()" ${takenToday?'disabled':''}>
+                ${takenToday?'✅ Lääke otettu tänään':'💊 Merkitse lääke otetuksi'}
             </button>
-            <div class="new-medicine">
-                <h3>🆕 Aloita uusi lääkepakkaus</h3>
+            <div class="new-medicine"><h3>🆕 Aloita uusi lääkepakkaus</h3>
                 <input type="date" id="newStartDate" value="${today}">
                 <button class="btn-secondary" onclick="startNewMedicine(document.getElementById('newStartDate').value)">Aloita uusi pakkaus</button>
             </div>
@@ -434,14 +368,11 @@ function render(){
                 <div class="history-list" id="historyList">${generateDayHistory()}</div>
             </div>`;
     }
-
-    html += `
-        <div class="data-buttons">
-            <button class="btn-secondary" onclick="exportData()">📤 Vie tiedot</button>
-            <button class="btn-secondary" onclick="importData()">📥 Tuo tiedot</button>
-        </div>`;
-
-    appEl.innerHTML = html;
+    html+=`<div class="data-buttons">
+        <button class="btn-secondary" onclick="exportData()">📤 Vie tiedot</button>
+        <button class="btn-secondary" onclick="importData()">📥 Tuo tiedot</button>
+    </div>`;
+    document.getElementById('app').innerHTML=html;
 }
 </script>
 </body>

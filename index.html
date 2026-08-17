@@ -570,7 +570,7 @@ function render(){
 
     let html = '';
 
-    if(legacyDataDetected){
+    if(legacyDataDetected && meds.length === 0){
         html += `<div class="info-banner">ℹ️ Sovellus päivitettiin tukemaan useita lääkkeitä. Aiempaa yhden lääkkeen dataa ei voitu muuntaa automaattisesti (pakkauskoko ei ollut tiedossa) – lisää lääkkeesi uudelleen alta.</div>`;
     }
 

@@ -123,6 +123,16 @@
         .pkg-form-section { background:#f0f8fb; border-radius:14px; padding:16px 18px; margin-top:20px; }
         .pkg-form-section-title { font-size:12px; font-weight:800; color:#0B6E8C; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:2px; }
         .pkg-form-body .form-error { color:#dc3545; font-size:13px; font-weight:700; margin-top:10px; min-height:18px; }
+
+        /* Muista apteekissa -yhteenveto */
+        .pharmacy-card { background:#f8f9fa; border:2px solid #ddd; border-radius:14px; padding:16px 20px; margin-bottom:14px; }
+        .pharmacy-card.pharmacy-warning { border-color:#ffc107; background:#fffaf0; }
+        .pharmacy-card.pharmacy-critical { border-color:#dc3545; background:#fdf2f3; }
+        .pharmacy-card h3 { font-size:18px; color:#0B6E8C; margin-bottom:8px; }
+        .pharmacy-reasons { list-style:none; }
+        .pharmacy-reasons li { font-size:14px; padding:5px 0; font-weight:600; color:#555; }
+        .pharmacy-reasons li.critical { color:#a71d2a; }
+        .pharmacy-reasons li.warning { color:#856404; }
     </style>
 </head>
 <body>
@@ -180,17 +190,20 @@ const auth     = getAuth(app);
 const DATA_DOC = doc(db, "astmalaake", "data");
 
 // ============================
-// ASETUKSET (hälytysrajat)
+// ASETUKSET (hälytysrajat) — muokattavissa Asetukset-näkymästä, oletukset alla
 // ============================
-const PACKAGE_WARNING_DAYS  = 10; // pakkaus "loppumassa" -varoitus
-const PACKAGE_CRITICAL_DAYS = 3;  // pakkaus "loppuu heti" -varoitus
-const RX_WARNING_DAYS       = 30; // resepti "vanhenemassa" -varoitus
-const RX_CRITICAL_DAYS      = 7;  // resepti "vanhenee heti" -varoitus
+const DEFAULT_THRESHOLDS = {
+    packageWarningDays: 10,  // pakkaus "loppumassa" -varoitus
+    packageCriticalDays: 3,  // pakkaus "loppuu heti" -varoitus
+    rxWarningDays: 30,       // resepti "vanhenemassa" -varoitus
+    rxCriticalDays: 7        // resepti "vanhenee heti" -varoitus
+};
+let thresholds = { ...DEFAULT_THRESHOLDS };
 
 // ============================
 // TILA
 // ============================
-let data = { medicines: {} };
+let data = { medicines: {}, settings: { ...DEFAULT_THRESHOLDS } };
 let legacyDataDetected = false;
 let isSaving = false;
 let unsubSnapshot = null;
@@ -293,12 +306,15 @@ function normalizeLoadedData(parsed){
             if(typeof m.prescriptionTotalPackages === 'undefined') m.prescriptionTotalPackages = null;
             if(typeof m.prescriptionPackagesUsed === 'undefined') m.prescriptionPackagesUsed = 0;
         });
+        parsed.settings = { ...DEFAULT_THRESHOLDS, ...(parsed.settings || {}) };
+        thresholds = parsed.settings;
         return parsed;
     }
     // Vanha tietomalli (yksi lääke: startDate/doses) - ei voida automaattisesti muuntaa,
     // koska pakkauskoko/annostus eivät olleet aiemmin tiedossa.
     legacyDataDetected = true;
-    return { medicines: {} };
+    thresholds = { ...DEFAULT_THRESHOLDS };
+    return { medicines: {}, settings: { ...DEFAULT_THRESHOLDS } };
 }
 
 async function loadFromFirebase(){
@@ -495,20 +511,46 @@ window.logAsNeededPackage = async (id) => {
 // NÄKYMÄN VAIHTO (kojelauta / reseptilistaus)
 // ============================
 window.showPrescriptionsView = () => { ui.view = 'prescriptions'; render(); };
+window.showPharmacyView = () => { ui.view = 'pharmacy'; render(); };
+window.showSettingsView = () => { ui.view = 'settings'; render(); };
 window.showDashboard = () => { ui.view = 'dashboard'; render(); };
+
+window.saveThresholds = async () => {
+    const pkgWarn = parseInt(document.getElementById('setPkgWarn').value, 10);
+    const pkgCrit = parseInt(document.getElementById('setPkgCrit').value, 10);
+    const rxWarn  = parseInt(document.getElementById('setRxWarn').value, 10);
+    const rxCrit  = parseInt(document.getElementById('setRxCrit').value, 10);
+    const err = document.getElementById('setError');
+
+    if([pkgWarn, pkgCrit, rxWarn, rxCrit].some(v => isNaN(v) || v < 0)){
+        err.textContent = 'Anna kelvolliset positiiviset luvut kaikkiin kenttiin.';
+        return;
+    }
+
+    thresholds = { packageWarningDays: pkgWarn, packageCriticalDays: pkgCrit, rxWarningDays: rxWarn, rxCriticalDays: rxCrit };
+    data.settings = thresholds;
+    await saveData();
+    ui.view = 'dashboard';
+    render();
+};
+
+window.resetThresholds = () => {
+    thresholds = { ...DEFAULT_THRESHOLDS };
+    render();
+};
 
 // ============================
 // RENDER-APURIT
 // ============================
 function packageBadge(days){
-    if(days <= PACKAGE_CRITICAL_DAYS) return `<span class="badge badge-package-critical">🔴 Pakkaus ${days<=0?'on loppunut':'loppuu '+days+' pv kuluttua'}</span>`;
-    if(days <= PACKAGE_WARNING_DAYS)  return `<span class="badge badge-package-warning">🟡 Pakkaus loppumassa (${days} pv)</span>`;
+    if(days <= thresholds.packageCriticalDays) return `<span class="badge badge-package-critical">🔴 Pakkaus ${days<=0?'on loppunut':'loppuu '+days+' pv kuluttua'}</span>`;
+    if(days <= thresholds.packageWarningDays)  return `<span class="badge badge-package-warning">🟡 Pakkaus loppumassa (${days} pv)</span>`;
     return '';
 }
 function rxBadge(days){
     if(days === null) return '';
-    if(days <= RX_CRITICAL_DAYS) return `<span class="badge badge-rx-critical">🔴 Resepti ${days<=0?'on vanhentunut':'vanhenee '+days+' pv kuluttua'}</span>`;
-    if(days <= RX_WARNING_DAYS)  return `<span class="badge badge-rx-warning">🟡 Resepti vanhenemassa (${days} pv)</span>`;
+    if(days <= thresholds.rxCriticalDays) return `<span class="badge badge-rx-critical">🔴 Resepti ${days<=0?'on vanhentunut':'vanhenee '+days+' pv kuluttua'}</span>`;
+    if(days <= thresholds.rxWarningDays)  return `<span class="badge badge-rx-warning">🟡 Resepti vanhenemassa (${days} pv)</span>`;
     return '';
 }
 function refillBadge(m){
@@ -661,8 +703,8 @@ function renderMedCard(m, isHero){
 
     let cls = 'med-card';
     if(isHero) cls += ' hero';
-    if(packageDays <= PACKAGE_CRITICAL_DAYS) cls += ' critical-package';
-    else if(packageDays <= PACKAGE_WARNING_DAYS) cls += ' warning-package';
+    if(packageDays <= thresholds.packageCriticalDays) cls += ' critical-package';
+    else if(packageDays <= thresholds.packageWarningDays) cls += ' warning-package';
 
     return `<div class="${cls}">
         <div class="med-header">
@@ -695,8 +737,8 @@ function renderAsNeededCard(m){
     const remaining = getPrescriptionPackagesRemaining(m);
 
     let cls = 'med-card asneeded-card';
-    if(rxDays !== null && rxDays <= RX_CRITICAL_DAYS) cls += ' critical-package';
-    else if(rxDays !== null && rxDays <= RX_WARNING_DAYS) cls += ' warning-package';
+    if(rxDays !== null && rxDays <= thresholds.rxCriticalDays) cls += ' critical-package';
+    else if(rxDays !== null && rxDays <= thresholds.rxWarningDays) cls += ' warning-package';
 
     return `<div class="${cls}">
         <div class="med-header">
@@ -733,8 +775,8 @@ function renderPrescriptionsView(){
             const days = getPrescriptionDaysRemaining(m);
             let cardCls = 'rx-card';
             let chipCls = 'rx-days-chip';
-            if(days <= RX_CRITICAL_DAYS){ cardCls += ' rx-critical'; chipCls += ' critical'; }
-            else if(days <= RX_WARNING_DAYS){ cardCls += ' rx-warning'; chipCls += ' warning'; }
+            if(days <= thresholds.rxCriticalDays){ cardCls += ' rx-critical'; chipCls += ' critical'; }
+            else if(days <= thresholds.rxWarningDays){ cardCls += ' rx-warning'; chipCls += ' warning'; }
 
             const chipContent = days <= 0
                 ? `<span class="num">⚠️</span><span class="unit">vanhentunut</span>`
@@ -756,14 +798,133 @@ function renderPrescriptionsView(){
 }
 
 // ============================
+// MUISTA APTEEKISSA -YHTEENVETO
+// ============================
+function getPharmacyReasons(m){
+    const reasons = [];
+
+    if((m.mode || 'daily') === 'daily'){
+        const days = getPackageDaysRemaining(m);
+        if(days <= thresholds.packageWarningDays){
+            reasons.push({
+                text: days <= 0 ? '📦 Pakkaus on loppunut' : `📦 Pakkaus loppuu ${days} pv kuluttua (${formatDate(getPackageEndDate(m))})`,
+                urgency: days <= thresholds.packageCriticalDays ? 'critical' : 'warning',
+                sortDays: days
+            });
+        }
+    }
+
+    if(m.prescriptionValidUntil){
+        const rxDays = getPrescriptionDaysRemaining(m);
+        if(rxDays <= thresholds.rxWarningDays){
+            reasons.push({
+                text: rxDays <= 0 ? '📝 Resepti on vanhentunut' : `📝 Resepti vanhenee ${rxDays} pv kuluttua (${formatDate(m.prescriptionValidUntil)})`,
+                urgency: rxDays <= thresholds.rxCriticalDays ? 'critical' : 'warning',
+                sortDays: rxDays
+            });
+        }
+    }
+
+    if(m.prescriptionTotalPackages){
+        const remaining = getPrescriptionPackagesRemaining(m);
+        if(remaining <= 1){
+            reasons.push({
+                text: remaining <= 0 ? '🧾 Resepti käytetty loppuun – tarvitset uuden reseptin' : `🧾 Reseptillä enää ${remaining} pakkaus jäljellä`,
+                urgency: remaining <= 0 ? 'critical' : 'warning',
+                sortDays: remaining
+            });
+        }
+    }
+
+    return reasons;
+}
+
+function getPharmacyItems(){
+    const items = Object.values(data.medicines)
+        .map(m => ({ m, reasons: getPharmacyReasons(m) }))
+        .filter(x => x.reasons.length > 0);
+
+    items.sort((a, b) => {
+        const aCrit = a.reasons.some(r => r.urgency === 'critical');
+        const bCrit = b.reasons.some(r => r.urgency === 'critical');
+        if(aCrit !== bCrit) return aCrit ? -1 : 1;
+        const aMin = Math.min(...a.reasons.map(r => r.sortDays));
+        const bMin = Math.min(...b.reasons.map(r => r.sortDays));
+        return aMin - bMin;
+    });
+
+    return items;
+}
+
+function renderPharmacyView(){
+    const items = getPharmacyItems();
+
+    let html = `<button class="btn-secondary" onclick="showDashboard()">← Takaisin</button>`;
+    html += `<h2 class="section-title" style="margin-top:18px;">🛍️ Muista apteekissa</h2>`;
+
+    if(items.length === 0){
+        html += `<div class="empty-state">✅ Ei mitään kiireellistä juuri nyt.<br>Kaikki pakkaukset ja reseptit ovat kunnossa.</div>`;
+    } else {
+        html += `<div class="rx-list">`;
+        items.forEach(({ m, reasons }) => {
+            const hasCritical = reasons.some(r => r.urgency === 'critical');
+            const cls = 'pharmacy-card' + (hasCritical ? ' pharmacy-critical' : ' pharmacy-warning');
+            html += `<div class="${cls}">
+                <h3>${m.name}</h3>
+                <ul class="pharmacy-reasons">
+                    ${reasons.map(r => `<li class="${r.urgency}">${r.text}</li>`).join('')}
+                </ul>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    document.getElementById('app').innerHTML = html;
+}
+
+// ============================
+// ASETUKSET-NÄKYMÄ (hälytysrajat)
+// ============================
+function renderSettingsView(){
+    const t = thresholds;
+    let html = `<button class="btn-secondary" onclick="showDashboard()">← Takaisin</button>`;
+    html += `<h2 class="section-title" style="margin-top:18px;">⚙️ Hälytysrajat</h2>`;
+    html += `<div class="form-card" style="background:#f0f8fb;border-color:#0B6E8C;">
+        <div class="hint" style="margin-bottom:14px;">Näiden rajojen mukaan sovellus näyttää keltaiset ja punaiset varoitukset. Muutokset näkyvät heti, mutta tallentuvat pysyvästi vasta kun painat Tallenna.</div>
+
+        <label for="setPkgWarn">📦 Pakkaus loppumassa (keltainen), päivää ennen loppumista</label>
+        <input type="number" id="setPkgWarn" min="0" step="1" value="${t.packageWarningDays}">
+
+        <label for="setPkgCrit">📦 Pakkaus loppuu pian (punainen), päivää ennen loppumista</label>
+        <input type="number" id="setPkgCrit" min="0" step="1" value="${t.packageCriticalDays}">
+
+        <label for="setRxWarn">📝 Resepti vanhenemassa (keltainen), päivää ennen vanhenemista</label>
+        <input type="number" id="setRxWarn" min="0" step="1" value="${t.rxWarningDays}">
+
+        <label for="setRxCrit">📝 Resepti vanhenee pian (punainen), päivää ennen vanhenemista</label>
+        <input type="number" id="setRxCrit" min="0" step="1" value="${t.rxCriticalDays}">
+
+        <div class="form-error" id="setError"></div>
+        <div class="form-buttons">
+            <button class="btn-secondary" onclick="resetThresholds()">Palauta oletukset</button>
+            <button class="btn-primary" onclick="saveThresholds()">Tallenna</button>
+        </div>
+    </div>`;
+    document.getElementById('app').innerHTML = html;
+}
+
+// ============================
 // RENDER
 // ============================
 function render(){
     if(ui.view === 'prescriptions'){ renderPrescriptionsView(); return; }
+    if(ui.view === 'pharmacy'){ renderPharmacyView(); return; }
+    if(ui.view === 'settings'){ renderSettingsView(); return; }
 
     const allMeds = Object.entries(data.medicines).map(([id,m]) => ({ id, ...m }));
     const dailyMeds = allMeds.filter(m => (m.mode || 'daily') === 'daily');
     const asNeededMeds = allMeds.filter(m => m.mode === 'asNeeded');
+    const pharmacyCount = getPharmacyItems().length;
 
     dailyMeds.sort((a,b) => getPackageDaysRemaining(a) - getPackageDaysRemaining(b));
     asNeededMeds.sort((a,b) => {
@@ -786,7 +947,10 @@ function render(){
         html += `<button class="btn-primary" onclick="showAddMedicineForm()">➕ Lisää uusi lääke</button>`;
     }
 
+    html += `<button class="btn-secondary" onclick="showPharmacyView()">🛍️ Muista apteekissa${pharmacyCount ? ' (' + pharmacyCount + ')' : ''}</button>`;
     html += `<button class="btn-secondary" onclick="showPrescriptionsView()">📋 Reseptilistaus</button>`;
+    html += `<button class="btn-secondary" onclick="showSettingsView()">⚙️ Hälytysrajat</button>`;
+
 
     if(allMeds.length === 0){
         html += `<div class="empty-state">Ei vielä lisättyjä lääkkeitä.<br>Lisää ensimmäinen lääke yllä olevasta napista.</div>`;

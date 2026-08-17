@@ -123,16 +123,6 @@
         .pkg-form-section { background:#f0f8fb; border-radius:14px; padding:16px 18px; margin-top:20px; }
         .pkg-form-section-title { font-size:12px; font-weight:800; color:#0B6E8C; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:2px; }
         .pkg-form-body .form-error { color:#dc3545; font-size:13px; font-weight:700; margin-top:10px; min-height:18px; }
-
-        /* Muista apteekissa -yhteenveto */
-        .pharmacy-card { background:#f8f9fa; border:2px solid #ddd; border-radius:14px; padding:16px 20px; margin-bottom:14px; }
-        .pharmacy-card.pharmacy-warning { border-color:#ffc107; background:#fffaf0; }
-        .pharmacy-card.pharmacy-critical { border-color:#dc3545; background:#fdf2f3; }
-        .pharmacy-card h3 { font-size:18px; color:#0B6E8C; margin-bottom:8px; }
-        .pharmacy-reasons { list-style:none; }
-        .pharmacy-reasons li { font-size:14px; padding:5px 0; font-weight:600; color:#555; }
-        .pharmacy-reasons li.critical { color:#a71d2a; }
-        .pharmacy-reasons li.warning { color:#856404; }
     </style>
 </head>
 <body>
@@ -511,7 +501,6 @@ window.logAsNeededPackage = async (id) => {
 // NÄKYMÄN VAIHTO (kojelauta / reseptilistaus)
 // ============================
 window.showPrescriptionsView = () => { ui.view = 'prescriptions'; render(); };
-window.showPharmacyView = () => { ui.view = 'pharmacy'; render(); };
 window.showSettingsView = () => { ui.view = 'settings'; render(); };
 window.showDashboard = () => { ui.view = 'dashboard'; render(); };
 
@@ -798,91 +787,6 @@ function renderPrescriptionsView(){
 }
 
 // ============================
-// MUISTA APTEEKISSA -YHTEENVETO
-// ============================
-function getPharmacyReasons(m){
-    const reasons = [];
-
-    if((m.mode || 'daily') === 'daily'){
-        const days = getPackageDaysRemaining(m);
-        if(days <= thresholds.packageWarningDays){
-            reasons.push({
-                text: days <= 0 ? '📦 Pakkaus on loppunut' : `📦 Pakkaus loppuu ${days} pv kuluttua (${formatDate(getPackageEndDate(m))})`,
-                urgency: days <= thresholds.packageCriticalDays ? 'critical' : 'warning',
-                sortDays: days
-            });
-        }
-    }
-
-    if(m.prescriptionValidUntil){
-        const rxDays = getPrescriptionDaysRemaining(m);
-        if(rxDays <= thresholds.rxWarningDays){
-            reasons.push({
-                text: rxDays <= 0 ? '📝 Resepti on vanhentunut' : `📝 Resepti vanhenee ${rxDays} pv kuluttua (${formatDate(m.prescriptionValidUntil)})`,
-                urgency: rxDays <= thresholds.rxCriticalDays ? 'critical' : 'warning',
-                sortDays: rxDays
-            });
-        }
-    }
-
-    if(m.prescriptionTotalPackages){
-        const remaining = getPrescriptionPackagesRemaining(m);
-        if(remaining <= 1){
-            reasons.push({
-                text: remaining <= 0 ? '🧾 Resepti käytetty loppuun – tarvitset uuden reseptin' : `🧾 Reseptillä enää ${remaining} pakkaus jäljellä`,
-                urgency: remaining <= 0 ? 'critical' : 'warning',
-                sortDays: remaining
-            });
-        }
-    }
-
-    return reasons;
-}
-
-function getPharmacyItems(){
-    const items = Object.values(data.medicines)
-        .map(m => ({ m, reasons: getPharmacyReasons(m) }))
-        .filter(x => x.reasons.length > 0);
-
-    items.sort((a, b) => {
-        const aCrit = a.reasons.some(r => r.urgency === 'critical');
-        const bCrit = b.reasons.some(r => r.urgency === 'critical');
-        if(aCrit !== bCrit) return aCrit ? -1 : 1;
-        const aMin = Math.min(...a.reasons.map(r => r.sortDays));
-        const bMin = Math.min(...b.reasons.map(r => r.sortDays));
-        return aMin - bMin;
-    });
-
-    return items;
-}
-
-function renderPharmacyView(){
-    const items = getPharmacyItems();
-
-    let html = `<button class="btn-secondary" onclick="showDashboard()">← Takaisin</button>`;
-    html += `<h2 class="section-title" style="margin-top:18px;">🛍️ Muista apteekissa</h2>`;
-
-    if(items.length === 0){
-        html += `<div class="empty-state">✅ Ei mitään kiireellistä juuri nyt.<br>Kaikki pakkaukset ja reseptit ovat kunnossa.</div>`;
-    } else {
-        html += `<div class="rx-list">`;
-        items.forEach(({ m, reasons }) => {
-            const hasCritical = reasons.some(r => r.urgency === 'critical');
-            const cls = 'pharmacy-card' + (hasCritical ? ' pharmacy-critical' : ' pharmacy-warning');
-            html += `<div class="${cls}">
-                <h3>${m.name}</h3>
-                <ul class="pharmacy-reasons">
-                    ${reasons.map(r => `<li class="${r.urgency}">${r.text}</li>`).join('')}
-                </ul>
-            </div>`;
-        });
-        html += `</div>`;
-    }
-
-    document.getElementById('app').innerHTML = html;
-}
-
-// ============================
 // ASETUKSET-NÄKYMÄ (hälytysrajat)
 // ============================
 function renderSettingsView(){
@@ -918,13 +822,11 @@ function renderSettingsView(){
 // ============================
 function render(){
     if(ui.view === 'prescriptions'){ renderPrescriptionsView(); return; }
-    if(ui.view === 'pharmacy'){ renderPharmacyView(); return; }
     if(ui.view === 'settings'){ renderSettingsView(); return; }
 
     const allMeds = Object.entries(data.medicines).map(([id,m]) => ({ id, ...m }));
     const dailyMeds = allMeds.filter(m => (m.mode || 'daily') === 'daily');
     const asNeededMeds = allMeds.filter(m => m.mode === 'asNeeded');
-    const pharmacyCount = getPharmacyItems().length;
 
     dailyMeds.sort((a,b) => getPackageDaysRemaining(a) - getPackageDaysRemaining(b));
     asNeededMeds.sort((a,b) => {
@@ -947,7 +849,6 @@ function render(){
         html += `<button class="btn-primary" onclick="showAddMedicineForm()">➕ Lisää uusi lääke</button>`;
     }
 
-    html += `<button class="btn-secondary" onclick="showPharmacyView()">🛍️ Muista apteekissa${pharmacyCount ? ' (' + pharmacyCount + ')' : ''}</button>`;
     html += `<button class="btn-secondary" onclick="showPrescriptionsView()">📋 Reseptilistaus</button>`;
     html += `<button class="btn-secondary" onclick="showSettingsView()">⚙️ Hälytysrajat</button>`;
 

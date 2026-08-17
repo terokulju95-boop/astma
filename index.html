@@ -22,10 +22,6 @@
         .btn-secondary:hover { background:#5a6268; }
         .btn-danger { background:#dc3545; color:white; }
         .btn-danger:hover { background:#c82333; }
-        .btn-outline { background:white; color:#0B6E8C; border:2px solid #0B6E8C; }
-        .btn-outline:hover { background:#f0f8fb; }
-        .top-nav { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px; }
-        .top-nav button { margin-bottom:0; }
 
         #saveStatus { position:fixed; top:0; left:0; right:0; padding:8px; text-align:center; font-size:13px; font-weight:700; z-index:9998; transition:opacity 0.5s; opacity:0; }
 
@@ -740,13 +736,11 @@ function render(){
 
     if(ui.addFormOpen){
         html += renderAddForm();
-        html += `<button class="btn-outline" onclick="showPrescriptionsView()">📋 Reseptilistaus</button>`;
     } else {
-        html += `<div class="top-nav">
-            <button class="btn-primary" onclick="showAddMedicineForm()">➕ Lisää lääke</button>
-            <button class="btn-outline" onclick="showPrescriptionsView()">📋 Reseptit</button>
-        </div>`;
+        html += `<button class="btn-primary" onclick="showAddMedicineForm()">➕ Lisää uusi lääke</button>`;
     }
+
+    html += `<button class="btn-secondary" onclick="showPrescriptionsView()">📋 Reseptilistaus</button>`;
 
     if(allMeds.length === 0){
         html += `<div class="empty-state">Ei vielä lisättyjä lääkkeitä.<br>Lisää ensimmäinen lääke yllä olevasta napista.</div>`;

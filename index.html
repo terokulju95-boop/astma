@@ -11,90 +11,85 @@
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
         body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif; background:linear-gradient(135deg,#0B6E8C 0%,#1AC0B8 100%); min-height:100vh; padding:20px; }
-        .container { max-width:500px; margin:0 auto; background:white; border-radius:20px; padding:30px; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
-        h1 { color:#0B6E8C; text-align:center; margin-bottom:30px; font-size:28px; }
-        .status-card { background:linear-gradient(135deg,#0B6E8C 0%,#1AC0B8 100%); color:white; padding:25px; border-radius:15px; margin-bottom:25px; text-align:center; }
-        .status-card h2 { font-size:18px; margin-bottom:10px; opacity:0.9; }
-        .status-card .big-number { font-size:48px; font-weight:bold; margin:10px 0; }
-        .status-card .label { font-size:14px; opacity:0.9; }
-        .date-info { background:#f8f9fa; padding:15px; border-radius:10px; margin-bottom:20px; }
-        .date-info p { margin:8px 0; color:#333; font-size:15px; }
-        .date-info strong { color:#0B6E8C; }
-        .new-medicine { background:#fff3cd; border:2px solid #ffc107; border-radius:10px; padding:20px; margin-bottom:20px; }
-        .new-medicine h3 { color:#856404; margin-bottom:15px; font-size:16px; }
-        .new-medicine input { width:100%; padding:12px; border:2px solid #ddd; border-radius:8px; font-size:16px; margin-bottom:10px; }
+        .container { max-width:520px; margin:0 auto; background:white; border-radius:20px; padding:30px; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
+        h1 { color:#0B6E8C; text-align:center; margin-bottom:25px; font-size:28px; }
         button { width:100%; padding:15px; border:none; border-radius:10px; font-size:18px; font-weight:bold; cursor:pointer; transition:all 0.3s; margin-bottom:10px; }
         .btn-primary { background:linear-gradient(135deg,#0B6E8C 0%,#1AC0B8 100%); color:white; }
-        .btn-primary:hover { transform:translateY(-2px); box-shadow:0 5px 15px rgba(102,126,234,0.4); }
-        .btn-success { background:#28a745; color:white; font-size:20px; }
-        .btn-success:hover { background:#218838; transform:scale(1.02); }
-        .btn-success:disabled { background:#ccc; cursor:not-allowed; transform:none; }
+        .btn-primary:hover { transform:translateY(-2px); box-shadow:0 5px 15px rgba(11,110,140,0.4); }
+        .btn-success { background:#28a745; color:white; }
+        .btn-success:hover { background:#218838; }
         .btn-secondary { background:#6c757d; color:white; font-size:14px; }
         .btn-secondary:hover { background:#5a6268; }
+        .btn-danger { background:#dc3545; color:white; }
+        .btn-danger:hover { background:#c82333; }
         .data-buttons { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px; padding-top:20px; border-top:2px solid #eee; }
-        .taken-today { background:#d4edda; border:2px solid #28a745; padding:15px; border-radius:10px; text-align:center; color:#155724; font-weight:bold; margin-bottom:15px; }
-        .warning { background:#f8d7da; border:2px solid #dc3545; padding:15px; border-radius:10px; text-align:center; color:#721c24; font-weight:bold; margin-bottom:15px; }
-        .history-section { margin-top:20px; padding-top:20px; border-top:2px solid #eee; }
-        .toggle-history { width:100%; padding:12px; background:#f8f9fa; color:#333; border:2px solid #ddd; border-radius:8px; font-size:16px; font-weight:bold; cursor:pointer; transition:all 0.3s; }
-        .toggle-history:hover { background:#e9ecef; }
-        .history-list { display:none; margin-top:15px; max-height:400px; overflow-y:auto; background:#f8f9fa; border-radius:10px; padding:15px; }
-        .history-list.show { display:block; }
-        .day-item { display:flex; justify-content:space-between; align-items:center; padding:12px; margin-bottom:8px; background:white; border-radius:8px; border:2px solid #ddd; }
-        .day-item.taken { border-color:#28a745; background:#d4edda; }
-        .day-item.missed { border-color:#dc3545; background:#f8d7da; }
-        .day-item.future { opacity:0.5; }
-        .day-date { font-weight:bold; color:#333; }
-        .day-status { font-size:20px; }
 
         #saveStatus { position:fixed; top:0; left:0; right:0; padding:8px; text-align:center; font-size:13px; font-weight:700; z-index:9998; transition:opacity 0.5s; opacity:0; }
 
         /* Kirjautumisruutu */
-        #loginScreen {
-            position:fixed; inset:0;
-            background:linear-gradient(135deg,#0B6E8C 0%,#1AC0B8 100%);
-            display:flex; align-items:center; justify-content:center;
-            z-index:9999; padding:20px;
-        }
-        .login-box {
-            background:white; border-radius:20px;
-            padding:36px 28px; width:100%; max-width:360px;
-            box-shadow:0 20px 60px rgba(0,0,0,0.3);
-        }
+        #loginScreen { position:fixed; inset:0; background:linear-gradient(135deg,#0B6E8C 0%,#1AC0B8 100%); display:flex; align-items:center; justify-content:center; z-index:9999; padding:20px; }
+        .login-box { background:white; border-radius:20px; padding:36px 28px; width:100%; max-width:360px; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
         .login-title { font-size:26px; font-weight:800; color:#0B6E8C; text-align:center; margin-bottom:6px; }
         .login-sub { font-size:14px; color:#888; text-align:center; margin-bottom:24px; }
         .login-box label { display:block; font-size:13px; font-weight:700; color:#444; margin-bottom:5px; }
-        .login-box input[type="email"],
-        .login-box input[type="password"] {
-            width:100%; padding:12px 14px;
-            border:2px solid #ddd; border-radius:10px;
-            font-size:16px; margin-bottom:14px;
-            transition:border 0.2s; outline:none;
-        }
+        .login-box input[type="email"], .login-box input[type="password"] { width:100%; padding:12px 14px; border:2px solid #ddd; border-radius:10px; font-size:16px; margin-bottom:14px; transition:border 0.2s; outline:none; }
         .login-box input:focus { border-color:#0B6E8C; }
-        .login-btn {
-            width:100%; padding:14px;
-            background:linear-gradient(135deg,#0B6E8C 0%,#1AC0B8 100%);
-            color:white; border:none; border-radius:10px;
-            font-size:17px; font-weight:700;
-            cursor:pointer; transition:opacity 0.2s; margin-bottom:0;
-        }
+        .login-btn { width:100%; padding:14px; background:linear-gradient(135deg,#0B6E8C 0%,#1AC0B8 100%); color:white; border:none; border-radius:10px; font-size:17px; font-weight:700; cursor:pointer; transition:opacity 0.2s; margin-bottom:0; }
         .login-btn:hover { opacity:0.9; }
         .login-btn:disabled { opacity:0.5; cursor:not-allowed; }
         .login-error { color:#dc3545; font-size:13px; font-weight:700; text-align:center; margin-top:12px; min-height:20px; }
 
         /* Käyttäjäpalkki */
-        .user-bar {
-            display:flex; justify-content:space-between; align-items:center;
-            background:#f0f4ff; border-radius:10px; padding:10px 14px;
-            margin-bottom:20px; font-size:13px; color:#555;
-        }
+        .user-bar { display:flex; justify-content:space-between; align-items:center; background:#f0f4ff; border-radius:10px; padding:10px 14px; margin-bottom:20px; font-size:13px; color:#555; }
         .user-bar span { font-weight:600; color:#0B6E8C; font-size:12px; }
-        .logout-btn {
-            background:none; border:none; color:#dc3545;
-            font-size:13px; font-weight:700; cursor:pointer;
-            width:auto; padding:4px 8px; margin:0;
-        }
+        .logout-btn { background:none; border:none; color:#dc3545; font-size:13px; font-weight:700; cursor:pointer; width:auto; padding:4px 8px; margin:0; }
         .logout-btn:hover { text-decoration:underline; }
+
+        /* Lääkekortit */
+        .med-list { margin-top:6px; }
+        .med-card { background:#f8f9fa; border:2px solid #ddd; border-radius:14px; padding:20px; margin-bottom:16px; }
+        .med-card.hero { background:linear-gradient(135deg,#0B6E8C 0%,#1AC0B8 100%); color:white; border:none; box-shadow:0 8px 20px rgba(11,110,140,0.3); }
+        .med-card.warning-package:not(.hero) { border-color:#ffc107; background:#fffaf0; }
+        .med-card.critical-package:not(.hero) { border-color:#dc3545; background:#fdf2f3; }
+        .med-header { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:6px; }
+        .med-header h3 { font-size:19px; color:#0B6E8C; }
+        .med-card.hero .med-header h3 { color:white; }
+        .med-actions { display:flex; gap:6px; flex-shrink:0; }
+        .icon-btn { width:auto; padding:7px 10px; font-size:13px; margin:0; border-radius:8px; background:rgba(0,0,0,0.06); color:#333; }
+        .med-card.hero .icon-btn { background:rgba(255,255,255,0.22); color:white; }
+        .icon-btn:hover { opacity:0.8; }
+        .med-days-number { font-size:44px; font-weight:800; line-height:1; margin:8px 0 2px; }
+        .med-days-label { font-size:13px; opacity:0.85; }
+        .med-card.hero .med-days-label { opacity:0.9; }
+        .med-info-row { font-size:14px; color:#555; margin:4px 0; }
+        .med-card.hero .med-info-row { color:rgba(255,255,255,0.92); }
+        .badge { display:inline-block; padding:5px 12px; border-radius:20px; font-size:12px; font-weight:700; margin:6px 6px 0 0; }
+        .badge-package-warning { background:#fff3cd; color:#856404; }
+        .badge-package-critical { background:#f8d7da; color:#721c24; }
+        .badge-rx-warning { background:#ffe8cc; color:#8a4b00; }
+        .badge-rx-critical { background:#f8d7da; color:#721c24; }
+        .med-card.hero .badge { background:rgba(255,255,255,0.9); }
+        .med-buttons { margin-top:14px; }
+        .med-buttons button { margin-bottom:8px; }
+        .history-toggle-small { background:none !important; border:none; color:#0B6E8C; font-size:13px; font-weight:700; cursor:pointer; width:auto !important; padding:4px 0 !important; margin:8px 0 0 !important; text-decoration:underline; }
+        .med-card.hero .history-toggle-small { color:white; }
+        .package-history { margin-top:8px; font-size:13px; background:rgba(0,0,0,0.04); border-radius:8px; padding:10px 12px; }
+        .med-card.hero .package-history { background:rgba(255,255,255,0.15); }
+        .package-history .hist-row { display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid rgba(0,0,0,0.08); }
+        .package-history .hist-row:last-child { border-bottom:none; }
+
+        .form-card { background:#fff3cd; border:2px solid #ffc107; border-radius:12px; padding:20px; margin-bottom:18px; }
+        .form-card h3 { color:#856404; margin-bottom:14px; font-size:16px; }
+        .form-card label { display:block; font-size:13px; font-weight:700; color:#555; margin:10px 0 4px; }
+        .form-card label:first-of-type { margin-top:0; }
+        .form-card input { width:100%; padding:12px; border:2px solid #ddd; border-radius:8px; font-size:16px; }
+        .form-card .form-error { color:#dc3545; font-size:13px; font-weight:700; margin-top:8px; min-height:18px; }
+        .form-buttons { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+        .form-buttons button { margin-bottom:0; }
+        .hint { font-size:12px; color:#888; margin-top:-2px; margin-bottom:6px; }
+
+        .empty-state { text-align:center; color:#999; padding:35px 10px; }
+        .info-banner { background:#eaf6ff; border:2px solid #0B6E8C; color:#0B6E8C; border-radius:10px; padding:14px; margin-bottom:18px; font-size:13px; font-weight:600; }
     </style>
 </head>
 <body>
@@ -151,9 +146,24 @@ const db       = getFirestore(app);
 const auth     = getAuth(app);
 const DATA_DOC = doc(db, "astmalaake", "data");
 
-let data = { startDate: null, doses: {} };
+// ============================
+// ASETUKSET (hälytysrajat)
+// ============================
+const PACKAGE_WARNING_DAYS  = 10; // pakkaus "loppumassa" -varoitus
+const PACKAGE_CRITICAL_DAYS = 3;  // pakkaus "loppuu heti" -varoitus
+const RX_WARNING_DAYS       = 30; // resepti "vanhenemassa" -varoitus
+const RX_CRITICAL_DAYS      = 7;  // resepti "vanhenee heti" -varoitus
+
+// ============================
+// TILA
+// ============================
+let data = { medicines: {} };
+let legacyDataDetected = false;
 let isSaving = false;
 let unsubSnapshot = null;
+
+// UI-tila (ei tallenneta Firebaseen)
+let ui = { addFormOpen:false, editId:null, newPackageId:null, openHistory:{} };
 
 // ============================
 // AUTH STATE
@@ -202,7 +212,6 @@ window.handleLogin = async () => {
     }
 };
 
-// Enter-näppäin
 document.getElementById('passwordInput').addEventListener('keydown', e => { if(e.key==='Enter') window.handleLogin(); });
 document.getElementById('emailInput').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('passwordInput').focus(); });
 
@@ -226,14 +235,14 @@ function showSaveStatus(msg, color){
 }
 
 // ============================
-// FIREBASE TALLENNUS
+// FIREBASE TALLENNUS / LATAUS
 // ============================
 async function saveData(){
     if(isSaving) return;
     isSaving = true;
     showSaveStatus('💾 Tallennetaan...', '#f97316');
     try {
-        localStorage.setItem('astmalaake_bkp', JSON.stringify(data));
+        localStorage.setItem('laakevahti_bkp', JSON.stringify(data));
         await setDoc(DATA_DOC, { json: JSON.stringify(data) });
         showSaveStatus('✅ Tallennettu', '#22c55e');
     } catch(e){
@@ -243,67 +252,156 @@ async function saveData(){
     isSaving = false;
 }
 
-// ============================
-// FIREBASE LATAUS
-// ============================
+function normalizeLoadedData(parsed){
+    if(parsed && parsed.medicines && typeof parsed.medicines === 'object'){
+        // varmista että jokaisella lääkkeellä on packageHistory-taulukko
+        Object.values(parsed.medicines).forEach(m => { if(!Array.isArray(m.packageHistory)) m.packageHistory = []; });
+        return parsed;
+    }
+    // Vanha tietomalli (yksi lääke: startDate/doses) - ei voida automaattisesti muuntaa,
+    // koska pakkauskoko/annostus eivät olleet aiemmin tiedossa.
+    legacyDataDetected = true;
+    return { medicines: {} };
+}
+
 async function loadFromFirebase(){
     try {
         const snap = await getDoc(DATA_DOC);
         if(snap.exists()){
-            data = JSON.parse(snap.data().json) || { startDate:null, doses:{} };
+            data = normalizeLoadedData(JSON.parse(snap.data().json));
         } else {
-            const bkp = localStorage.getItem('astmalaake_bkp');
-            if(bkp) try { data = JSON.parse(bkp); await saveData(); } catch(e){ data={startDate:null,doses:{}}; }
+            const bkp = localStorage.getItem('laakevahti_bkp');
+            if(bkp){
+                try { data = normalizeLoadedData(JSON.parse(bkp)); await saveData(); }
+                catch(e){ data = { medicines:{} }; }
+            }
         }
     } catch(e){
-        const bkp = localStorage.getItem('astmalaake_bkp');
-        if(bkp) try { data = JSON.parse(bkp); } catch(e2){}
+        const bkp = localStorage.getItem('laakevahti_bkp');
+        if(bkp) try { data = normalizeLoadedData(JSON.parse(bkp)); } catch(e2){}
         showSaveStatus('⚠️ Yhteysvirhe – paikallinen data', '#f59e0b');
     }
     render();
     if(unsubSnapshot) unsubSnapshot();
     unsubSnapshot = onSnapshot(DATA_DOC, snap => {
         if(!snap.exists() || isSaving) return;
-        try { data = JSON.parse(snap.data().json) || {startDate:null,doses:{}}; render(); } catch(e){}
+        try { data = normalizeLoadedData(JSON.parse(snap.data().json)); render(); } catch(e){}
     });
 }
 
 // ============================
-// APUFUNKTIOT
+// APUFUNKTIOT (päivämäärät)
 // ============================
+function uid(){ return 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 function getTodayString(){ return new Date().toISOString().split('T')[0]; }
-function formatDate(dateStr){ return new Date(dateStr+'T12:00:00').toLocaleDateString('fi-FI'); }
-function getDaysRemaining(){
-    if(!data.startDate) return 100;
-    const end = new Date(data.startDate+'T12:00:00');
-    end.setDate(end.getDate()+100);
-    return Math.max(0, Math.ceil((end-new Date())/(1000*60*60*24)));
-}
-function getEndDate(){
-    if(!data.startDate) return null;
-    const end = new Date(data.startDate+'T12:00:00');
-    end.setDate(end.getDate()+100);
-    return end.toISOString().split('T')[0];
+function formatDate(dateStr){ if(!dateStr) return '-'; return new Date(dateStr+'T12:00:00').toLocaleDateString('fi-FI'); }
+function addDaysToDate(dateStr, days){ const d=new Date(dateStr+'T12:00:00'); d.setDate(d.getDate()+days); return d.toISOString().split('T')[0]; }
+function daysFromToday(dateStr){
+    const end = new Date(dateStr+'T12:00:00');
+    const today = new Date(); today.setHours(12,0,0,0);
+    return Math.ceil((end-today)/(1000*60*60*24));
 }
 
+// Pakkauksen loppumispäivä = aloituspäivä + floor(pakkauskoko / annos per päivä) päivää
+function getPackageEndDate(m){
+    const totalDays = Math.floor(m.packageSize / m.dosePerDay);
+    return addDaysToDate(m.startDate, totalDays);
+}
+function getPackageDaysRemaining(m){ return daysFromToday(getPackageEndDate(m)); }
+function getPrescriptionDaysRemaining(m){ return m.prescriptionValidUntil ? daysFromToday(m.prescriptionValidUntil) : null; }
+
 // ============================
-// TOIMINNOT
+// LÄÄKKEEN LISÄYS
 // ============================
-window.startNewMedicine = async (dateStr) => {
-    if(confirm('Haluatko varmasti aloittaa uuden lääkepakkauksen?')){
-        data.startDate = dateStr; data.doses = {};
-        await saveData(); render();
-    }
-};
-window.markDoseTaken = async () => {
-    data.doses[getTodayString()] = true;
+window.showAddMedicineForm = () => { ui.addFormOpen = true; ui.editId = null; ui.newPackageId = null; render(); };
+window.cancelAddMedicine = () => { ui.addFormOpen = false; render(); };
+
+window.saveNewMedicine = async () => {
+    const name  = document.getElementById('newMedName').value.trim();
+    const rx    = document.getElementById('newMedRx').value;
+    const size  = parseFloat(document.getElementById('newMedSize').value);
+    const dose  = parseFloat(document.getElementById('newMedDose').value);
+    const start = document.getElementById('newMedStart').value || getTodayString();
+    const err   = document.getElementById('newMedError');
+
+    if(!name){ err.textContent = 'Anna lääkkeen nimi.'; return; }
+    if(!size || size <= 0){ err.textContent = 'Anna pakkauksen pillimäärä (yli 0).'; return; }
+    if(!dose || dose <= 0){ err.textContent = 'Anna annos päivässä (yli 0).'; return; }
+
+    const id = uid();
+    data.medicines[id] = { name, prescriptionValidUntil: rx || null, packageSize: size, dosePerDay: dose, startDate: start, packageHistory: [] };
+    ui.addFormOpen = false;
     await saveData(); render();
 };
-window.toggleHistory = () => document.getElementById('historyList').classList.toggle('show');
+
+// ============================
+// LÄÄKKEEN MUOKKAUS
+// ============================
+window.openEditMedicine = (id) => { ui.editId = id; ui.addFormOpen = false; ui.newPackageId = null; render(); };
+window.cancelEditMedicine = () => { ui.editId = null; render(); };
+
+window.saveEditMedicine = async (id) => {
+    const m = data.medicines[id]; if(!m) return;
+    const name  = document.getElementById('editName_'+id).value.trim();
+    const rx    = document.getElementById('editRx_'+id).value;
+    const size  = parseFloat(document.getElementById('editSize_'+id).value);
+    const dose  = parseFloat(document.getElementById('editDose_'+id).value);
+    const start = document.getElementById('editStart_'+id).value;
+    const err   = document.getElementById('editError_'+id);
+
+    if(!name){ err.textContent = 'Anna lääkkeen nimi.'; return; }
+    if(!size || size <= 0){ err.textContent = 'Anna pakkauksen pillimäärä (yli 0).'; return; }
+    if(!dose || dose <= 0){ err.textContent = 'Anna annos päivässä (yli 0).'; return; }
+    if(!start){ err.textContent = 'Anna pakkauksen aloituspäivä.'; return; }
+
+    m.name = name; m.prescriptionValidUntil = rx || null; m.packageSize = size; m.dosePerDay = dose; m.startDate = start;
+    ui.editId = null;
+    await saveData(); render();
+};
+
+window.deleteMedicine = async (id) => {
+    const m = data.medicines[id];
+    if(!confirm('Haluatko varmasti poistaa lääkkeen "' + (m ? m.name : '') + '"? Tätä ei voi perua.')) return;
+    delete data.medicines[id];
+    await saveData(); render();
+};
+
+// ============================
+// UUSI PAKKAUS
+// ============================
+window.openNewPackage = (id) => { ui.newPackageId = id; ui.addFormOpen = false; ui.editId = null; render(); };
+window.cancelNewPackage = () => { ui.newPackageId = null; render(); };
+
+window.saveNewPackage = async (id) => {
+    const m = data.medicines[id]; if(!m) return;
+    const size  = parseFloat(document.getElementById('pkgSize_'+id).value);
+    const dose  = parseFloat(document.getElementById('pkgDose_'+id).value);
+    const start = document.getElementById('pkgStart_'+id).value || getTodayString();
+    const rx    = document.getElementById('pkgRx_'+id).value;
+    const err   = document.getElementById('pkgError_'+id);
+
+    if(!size || size <= 0){ err.textContent = 'Anna pakkauksen pillimäärä (yli 0).'; return; }
+    if(!dose || dose <= 0){ err.textContent = 'Anna annos päivässä (yli 0).'; return; }
+
+    m.packageHistory = m.packageHistory || [];
+    m.packageHistory.push({ startDate: m.startDate, packageSize: m.packageSize, dosePerDay: m.dosePerDay, endDate: getPackageEndDate(m) });
+
+    m.startDate = start; m.packageSize = size; m.dosePerDay = dose;
+    if(rx) m.prescriptionValidUntil = rx;
+
+    ui.newPackageId = null;
+    await saveData(); render();
+};
+
+window.toggleHistory = (id) => { ui.openHistory[id] = !ui.openHistory[id]; render(); };
+
+// ============================
+// VIENTI / TUONTI
+// ============================
 window.exportData = () => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
-    a.download = 'astmalaake-'+getTodayString()+'.json';
+    a.download = 'laakevahti-'+getTodayString()+'.json';
     a.click(); URL.revokeObjectURL(a.href);
 };
 window.importData = () => {
@@ -312,71 +410,190 @@ window.importData = () => {
     input.onchange = async e => {
         const reader = new FileReader();
         reader.onload = async evt => {
-            try { data=JSON.parse(evt.target.result); await saveData(); render(); alert('Tiedot tuotu!'); }
-            catch(err){ alert('Virhe tuotaessa tietoja!'); }
+            try {
+                data = normalizeLoadedData(JSON.parse(evt.target.result));
+                legacyDataDetected = false;
+                await saveData(); render(); alert('Tiedot tuotu!');
+            } catch(err){ alert('Virhe tuotaessa tietoja!'); }
         };
         reader.readAsText(e.target.files[0]);
     };
     input.click();
 };
 
-function generateDayHistory(){
-    if(!data.startDate) return '';
-    const start = new Date(data.startDate+'T12:00:00');
-    const end = new Date(start); end.setDate(end.getDate()+100);
-    const today = new Date();
-    let html='', cur=new Date(end);
-    while(cur>=start){
-        const dateStr=cur.toISOString().split('T')[0];
-        const isFuture=cur>today, isTaken=data.doses[dateStr];
-        const cls=isFuture?'future':isTaken?'taken':'missed';
-        const icon=isFuture?'⏳':isTaken?'✅':'❌';
-        html+=`<div class="day-item ${cls}"><span class="day-date">${formatDate(dateStr)}</span><span class="day-status">${icon}</span></div>`;
-        cur.setDate(cur.getDate()-1);
-    }
-    return html;
+// ============================
+// RENDER-APURIT
+// ============================
+function packageBadge(days){
+    if(days <= PACKAGE_CRITICAL_DAYS) return `<span class="badge badge-package-critical">🔴 Pakkaus ${days<=0?'on loppunut':'loppuu '+days+' pv kuluttua'}</span>`;
+    if(days <= PACKAGE_WARNING_DAYS)  return `<span class="badge badge-package-warning">🟡 Pakkaus loppumassa (${days} pv)</span>`;
+    return '';
+}
+function rxBadge(days){
+    if(days === null) return '';
+    if(days <= RX_CRITICAL_DAYS) return `<span class="badge badge-rx-critical">🔴 Resepti ${days<=0?'on vanhentunut':'vanhenee '+days+' pv kuluttua'}</span>`;
+    if(days <= RX_WARNING_DAYS)  return `<span class="badge badge-rx-warning">🟡 Resepti vanhenemassa (${days} pv)</span>`;
+    return '';
+}
+
+function renderAddForm(){
+    const today = getTodayString();
+    return `<div class="form-card">
+        <h3>➕ Lisää uusi lääke</h3>
+        <label for="newMedName">Lääkkeen nimi</label>
+        <input type="text" id="newMedName" placeholder="esim. Symbicort">
+
+        <label for="newMedRx">Resepti voimassa asti (valinnainen)</label>
+        <input type="date" id="newMedRx">
+
+        <label for="newMedSize">Pillejä pakkauksessa</label>
+        <input type="number" id="newMedSize" min="1" step="1" placeholder="esim. 60">
+
+        <label for="newMedDose">Annos päivässä</label>
+        <input type="number" id="newMedDose" min="0.5" step="0.5" placeholder="esim. 2">
+        <div class="hint">Sovellus laskee automaattisesti joka päivä yhden annoksen otetuksi.</div>
+
+        <label for="newMedStart">Nykyisen pakkauksen aloituspäivä</label>
+        <input type="date" id="newMedStart" value="${today}">
+
+        <div class="form-error" id="newMedError"></div>
+        <div class="form-buttons">
+            <button class="btn-secondary" onclick="cancelAddMedicine()">Peruuta</button>
+            <button class="btn-primary" onclick="saveNewMedicine()">Tallenna</button>
+        </div>
+    </div>`;
+}
+
+function renderEditForm(m){
+    return `<div class="med-card">
+        <h3 style="color:#0B6E8C;margin-bottom:14px;">✏️ Muokkaa: ${m.name}</h3>
+        <label for="editName_${m.id}">Lääkkeen nimi</label>
+        <input type="text" id="editName_${m.id}" value="${m.name}">
+
+        <label for="editRx_${m.id}">Resepti voimassa asti</label>
+        <input type="date" id="editRx_${m.id}" value="${m.prescriptionValidUntil||''}">
+
+        <label for="editSize_${m.id}">Pillejä pakkauksessa</label>
+        <input type="number" id="editSize_${m.id}" min="1" step="1" value="${m.packageSize}">
+
+        <label for="editDose_${m.id}">Annos päivässä</label>
+        <input type="number" id="editDose_${m.id}" min="0.5" step="0.5" value="${m.dosePerDay}">
+
+        <label for="editStart_${m.id}">Nykyisen pakkauksen aloituspäivä</label>
+        <input type="date" id="editStart_${m.id}" value="${m.startDate}">
+
+        <div class="form-error" id="editError_${m.id}"></div>
+        <div class="form-buttons">
+            <button class="btn-secondary" onclick="cancelEditMedicine()">Peruuta</button>
+            <button class="btn-primary" onclick="saveEditMedicine('${m.id}')">Tallenna</button>
+        </div>
+    </div>`;
+}
+
+function renderNewPackageForm(m){
+    const today = getTodayString();
+    return `<div class="med-card">
+        <h3 style="color:#0B6E8C;margin-bottom:4px;">🆕 Uusi pakkaus: ${m.name}</h3>
+        <div class="hint" style="margin-bottom:10px;">Edellinen pakkaus siirtyy historiaan.</div>
+
+        <label for="pkgSize_${m.id}">Pillejä uudessa pakkauksessa</label>
+        <input type="number" id="pkgSize_${m.id}" min="1" step="1" value="${m.packageSize}">
+
+        <label for="pkgDose_${m.id}">Annos päivässä</label>
+        <input type="number" id="pkgDose_${m.id}" min="0.5" step="0.5" value="${m.dosePerDay}">
+
+        <label for="pkgStart_${m.id}">Aloituspäivä</label>
+        <input type="date" id="pkgStart_${m.id}" value="${today}">
+
+        <label for="pkgRx_${m.id}">Resepti voimassa asti (täytä jos resepti uusittiin)</label>
+        <input type="date" id="pkgRx_${m.id}" value="${m.prescriptionValidUntil||''}">
+
+        <div class="form-error" id="pkgError_${m.id}"></div>
+        <div class="form-buttons">
+            <button class="btn-secondary" onclick="cancelNewPackage()">Peruuta</button>
+            <button class="btn-primary" onclick="saveNewPackage('${m.id}')">Tallenna</button>
+        </div>
+    </div>`;
+}
+
+function renderMedCard(m, isHero){
+    if(ui.editId === m.id) return renderEditForm(m);
+    if(ui.newPackageId === m.id) return renderNewPackageForm(m);
+
+    const packageDays = getPackageDaysRemaining(m);
+    const packageEnd  = getPackageEndDate(m);
+    const rxDays      = getPrescriptionDaysRemaining(m);
+
+    let cls = 'med-card';
+    if(isHero) cls += ' hero';
+    if(packageDays <= PACKAGE_CRITICAL_DAYS) cls += ' critical-package';
+    else if(packageDays <= PACKAGE_WARNING_DAYS) cls += ' warning-package';
+
+    const hist = m.packageHistory && m.packageHistory.length ? m.packageHistory : [];
+    const historyHtml = ui.openHistory[m.id] ? `<div class="package-history">
+        ${hist.length ? hist.slice().reverse().map(h => `<div class="hist-row"><span>${formatDate(h.startDate)} – ${formatDate(h.endDate)}</span><span>${h.packageSize} kpl / ${h.dosePerDay}/pv</span></div>`).join('') : '<div>Ei aiempia pakkauksia.</div>'}
+    </div>` : '';
+
+    return `<div class="${cls}">
+        <div class="med-header">
+            <h3>${m.name}</h3>
+            <div class="med-actions">
+                <button class="icon-btn" onclick="openEditMedicine('${m.id}')">✏️</button>
+                <button class="icon-btn" onclick="deleteMedicine('${m.id}')">🗑️</button>
+            </div>
+        </div>
+
+        <div class="med-days-number">${packageDays}</div>
+        <div class="med-days-label">päivää lääkettä jäljellä (loppuu noin ${formatDate(packageEnd)})</div>
+
+        ${packageBadge(packageDays)}${rxBadge(rxDays)}
+
+        <div class="med-info-row" style="margin-top:10px;">📦 ${m.packageSize} kpl pakkauksessa · ${m.dosePerDay} kpl/pv</div>
+        <div class="med-info-row">📅 Pakkaus aloitettu ${formatDate(m.startDate)}</div>
+        ${m.prescriptionValidUntil ? `<div class="med-info-row">📝 Resepti voimassa ${formatDate(m.prescriptionValidUntil)} asti</div>` : `<div class="med-info-row">📝 Reseptin voimassaoloa ei asetettu</div>`}
+
+        <div class="med-buttons">
+            <button class="btn-success" onclick="openNewPackage('${m.id}')">🆕 Aloita uusi pakkaus</button>
+        </div>
+
+        <button class="history-toggle-small" onclick="toggleHistory('${m.id}')">${ui.openHistory[m.id] ? '▲ Piilota pakkaushistoria' : '▼ Näytä pakkaushistoria' + (hist.length ? ' ('+hist.length+')' : '')}</button>
+        ${historyHtml}
+    </div>`;
 }
 
 // ============================
 // RENDER
 // ============================
 function render(){
-    const today=getTodayString(), takenToday=data.doses[today];
-    const daysRemaining=getDaysRemaining(), endDate=getEndDate();
-    let html='';
-    if(!data.startDate){
-        html=`<div class="new-medicine"><h3>🆕 Aloita uusi lääkepakkaus</h3>
-            <input type="date" id="startDate" value="${today}">
-            <button class="btn-primary" onclick="startNewMedicine(document.getElementById('startDate').value)">Aloita seuranta</button>
-            </div>`;
-    } else {
-        html=`<div class="status-card"><h2>Lääke loppuu</h2>
-            <div class="big-number">${daysRemaining}</div>
-            <div class="label">päivän kuluttua</div></div>
-            ${daysRemaining<=7?'<div class="warning">⚠️ Lääke loppuu pian! Tilaa uusi pakkaus.</div>':''}
-            ${takenToday?'<div class="taken-today">✅ Olet ottanut tänään lääkkeen!</div>':''}
-            <div class="date-info">
-                <p><strong>Aloituspäivä:</strong> ${formatDate(data.startDate)}</p>
-                <p><strong>Loppumispäivä:</strong> ${formatDate(endDate)}</p>
-                <p><strong>Tänään:</strong> ${formatDate(today)}</p>
-            </div>
-            <button class="btn-success" onclick="markDoseTaken()" ${takenToday?'disabled':''}>
-                ${takenToday?'✅ Lääke otettu tänään':'💊 Merkitse lääke otetuksi'}
-            </button>
-            <div class="new-medicine"><h3>🆕 Aloita uusi lääkepakkaus</h3>
-                <input type="date" id="newStartDate" value="${today}">
-                <button class="btn-secondary" onclick="startNewMedicine(document.getElementById('newStartDate').value)">Aloita uusi pakkaus</button>
-            </div>
-            <div class="history-section">
-                <button class="toggle-history" onclick="toggleHistory()">📅 Näytä/piilota päivähistoria</button>
-                <div class="history-list" id="historyList">${generateDayHistory()}</div>
-            </div>`;
+    const meds = Object.entries(data.medicines).map(([id,m]) => ({ id, ...m }));
+    meds.sort((a,b) => getPackageDaysRemaining(a) - getPackageDaysRemaining(b));
+
+    let html = '';
+
+    if(legacyDataDetected){
+        html += `<div class="info-banner">ℹ️ Sovellus päivitettiin tukemaan useita lääkkeitä. Aiempaa yhden lääkkeen dataa ei voitu muuntaa automaattisesti (pakkauskoko ei ollut tiedossa) – lisää lääkkeesi uudelleen alta.</div>`;
     }
-    html+=`<div class="data-buttons">
+
+    if(ui.addFormOpen){
+        html += renderAddForm();
+    } else {
+        html += `<button class="btn-primary" onclick="showAddMedicineForm()">➕ Lisää uusi lääke</button>`;
+    }
+
+    if(meds.length === 0){
+        html += `<div class="empty-state">Ei vielä lisättyjä lääkkeitä.<br>Lisää ensimmäinen lääke yllä olevasta napista.</div>`;
+    } else {
+        html += `<div class="med-list">`;
+        meds.forEach((m, idx) => { html += renderMedCard(m, idx === 0 && !ui.addFormOpen); });
+        html += `</div>`;
+    }
+
+    html += `<div class="data-buttons">
         <button class="btn-secondary" onclick="exportData()">📤 Vie tiedot</button>
         <button class="btn-secondary" onclick="importData()">📥 Tuo tiedot</button>
     </div>`;
-    document.getElementById('app').innerHTML=html;
+
+    document.getElementById('app').innerHTML = html;
 }
 </script>
 </body>

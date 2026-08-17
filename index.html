@@ -97,12 +97,32 @@
 
         /* Reseptilistaus-sivu */
         .rx-list { margin-top:4px; }
-        .rx-row { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; background:#f8f9fa; border:2px solid #ddd; border-radius:10px; margin-bottom:10px; gap:10px; }
-        .rx-row.rx-warning { border-color:#ffc107; background:#fffaf0; }
-        .rx-row.rx-critical { border-color:#dc3545; background:#fdf2f3; }
-        .rx-name { font-weight:700; color:#0B6E8C; }
-        .rx-date { font-size:14px; color:#555; text-align:right; white-space:nowrap; }
-        .rx-date small { color:#888; display:block; }
+        .rx-card { background:#f8f9fa; border:2px solid #ddd; border-radius:14px; padding:18px 20px; margin-bottom:14px; }
+        .rx-card.rx-warning { border-color:#ffc107; background:#fffaf0; }
+        .rx-card.rx-critical { border-color:#dc3545; background:#fdf2f3; }
+        .rx-card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+        .rx-card-top h3 { font-size:20px; color:#0B6E8C; }
+        .rx-days-chip { flex-shrink:0; text-align:center; background:#0B6E8C; color:white; border-radius:12px; padding:8px 16px; min-width:56px; }
+        .rx-days-chip .num { font-size:26px; font-weight:800; line-height:1; display:block; }
+        .rx-days-chip .unit { font-size:10px; opacity:0.9; text-transform:uppercase; letter-spacing:0.5px; }
+        .rx-days-chip.warning { background:#ffc107; color:#5c4400; }
+        .rx-days-chip.critical { background:#dc3545; color:white; }
+        .rx-card-date { font-size:15px; color:#444; font-weight:600; margin-top:10px; }
+        .rx-card .badge { margin-top:10px; }
+
+        /* Uusi pakkaus -lomake */
+        .pkg-form-card { background:white; border:2px solid #e2e2e2; border-radius:18px; overflow:hidden; margin-bottom:16px; box-shadow:0 6px 18px rgba(11,110,140,0.12); }
+        .pkg-form-header { background:linear-gradient(135deg,#0B6E8C 0%,#1AC0B8 100%); color:white; padding:20px 22px; }
+        .pkg-form-tag { display:inline-block; background:rgba(255,255,255,0.25); padding:4px 12px; border-radius:20px; font-size:11px; font-weight:800; letter-spacing:0.6px; margin-bottom:8px; }
+        .pkg-form-header h3 { font-size:22px; font-weight:800; }
+        .pkg-form-body { padding:22px; }
+        .pkg-form-body label { display:block; font-size:13px; font-weight:700; color:#555; margin:16px 0 6px; }
+        .pkg-form-body label:first-of-type { margin-top:0; }
+        .pkg-form-body input { width:100%; padding:14px; border:2px solid #ddd; border-radius:10px; font-size:17px; }
+        .pkg-form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+        .pkg-form-section { background:#f0f8fb; border-radius:14px; padding:16px 18px; margin-top:20px; }
+        .pkg-form-section-title { font-size:12px; font-weight:800; color:#0B6E8C; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:2px; }
+        .pkg-form-body .form-error { color:#dc3545; font-size:13px; font-weight:700; margin-top:10px; min-height:18px; }
     </style>
 </head>
 <body>
@@ -590,30 +610,43 @@ function renderEditForm(m){
 
 function renderNewPackageForm(m){
     const today = getTodayString();
-    return `<div class="med-card">
-        <h3 style="color:#0B6E8C;margin-bottom:4px;">🆕 Uusi pakkaus: ${m.name}</h3>
-        <div class="hint" style="margin-bottom:10px;">Edellinen pakkaus siirtyy historiaan.</div>
+    return `<div class="pkg-form-card">
+        <div class="pkg-form-header">
+            <span class="pkg-form-tag">🆕 UUSI PAKKAUS</span>
+            <h3>${m.name}</h3>
+        </div>
+        <div class="pkg-form-body">
+            <div class="hint" style="margin-bottom:4px;">Edellinen pakkaus siirtyy historiaan.</div>
 
-        <label for="pkgSize_${m.id}">Pillereitä uudessa pakkauksessa</label>
-        <input type="number" id="pkgSize_${m.id}" min="1" step="1" value="${m.packageSize}">
+            <div class="pkg-form-row">
+                <div>
+                    <label for="pkgSize_${m.id}">Pillereitä pakkauksessa</label>
+                    <input type="number" id="pkgSize_${m.id}" min="1" step="1" value="${m.packageSize}">
+                </div>
+                <div>
+                    <label for="pkgDose_${m.id}">Annos päivässä</label>
+                    <input type="number" id="pkgDose_${m.id}" min="0.5" step="0.5" value="${m.dosePerDay}">
+                </div>
+            </div>
 
-        <label for="pkgDose_${m.id}">Annos päivässä</label>
-        <input type="number" id="pkgDose_${m.id}" min="0.5" step="0.5" value="${m.dosePerDay}">
+            <label for="pkgStart_${m.id}">Aloituspäivä</label>
+            <input type="date" id="pkgStart_${m.id}" value="${today}">
 
-        <label for="pkgStart_${m.id}">Aloituspäivä</label>
-        <input type="date" id="pkgStart_${m.id}" value="${today}">
+            <div class="pkg-form-section">
+                <div class="pkg-form-section-title">📝 Resepti</div>
+                <label for="pkgRx_${m.id}">Voimassa asti</label>
+                <input type="date" id="pkgRx_${m.id}" value="${m.prescriptionValidUntil||''}">
+                <div class="hint">Jätä sama päivä jos jatkat samalla reseptillä – pakkauslaskuri päivittyy automaattisesti. Vaihda päivä jos resepti uusittiin.</div>
 
-        <label for="pkgRx_${m.id}">Resepti voimassa asti</label>
-        <input type="date" id="pkgRx_${m.id}" value="${m.prescriptionValidUntil||''}">
-        <div class="hint">Jätä sama päivä jos jatkat samalla reseptillä – pakkauslaskuri päivittyy automaattisesti. Vaihda päivä jos resepti uusittiin.</div>
+                <label for="pkgTotal_${m.id}">Pakkauksia reseptillä yhteensä</label>
+                <input type="number" id="pkgTotal_${m.id}" min="1" step="1" value="${m.prescriptionTotalPackages||''}">
+            </div>
 
-        <label for="pkgTotal_${m.id}">Pakkauksia reseptillä yhteensä</label>
-        <input type="number" id="pkgTotal_${m.id}" min="1" step="1" value="${m.prescriptionTotalPackages||''}">
-
-        <div class="form-error" id="pkgError_${m.id}"></div>
-        <div class="form-buttons">
-            <button class="btn-secondary" onclick="cancelNewPackage()">Peruuta</button>
-            <button class="btn-primary" onclick="saveNewPackage('${m.id}')">Tallenna</button>
+            <div class="form-error" id="pkgError_${m.id}"></div>
+            <div class="form-buttons">
+                <button class="btn-secondary" onclick="cancelNewPackage()">Peruuta</button>
+                <button class="btn-primary" onclick="saveNewPackage('${m.id}')">Tallenna</button>
+            </div>
         </div>
     </div>`;
 }
@@ -698,10 +731,23 @@ function renderPrescriptionsView(){
         html += `<div class="rx-list">`;
         meds.forEach(m => {
             const days = getPrescriptionDaysRemaining(m);
-            let cls = 'rx-row';
-            if(days <= RX_CRITICAL_DAYS) cls += ' rx-critical';
-            else if(days <= RX_WARNING_DAYS) cls += ' rx-warning';
-            html += `<div class="${cls}"><span class="rx-name">${m.name}</span><span class="rx-date">${formatDate(m.prescriptionValidUntil)}<small>(${days} pv)</small></span></div>`;
+            let cardCls = 'rx-card';
+            let chipCls = 'rx-days-chip';
+            if(days <= RX_CRITICAL_DAYS){ cardCls += ' rx-critical'; chipCls += ' critical'; }
+            else if(days <= RX_WARNING_DAYS){ cardCls += ' rx-warning'; chipCls += ' warning'; }
+
+            const chipContent = days <= 0
+                ? `<span class="num">⚠️</span><span class="unit">vanhentunut</span>`
+                : `<span class="num">${days}</span><span class="unit">pv</span>`;
+
+            html += `<div class="${cardCls}">
+                <div class="rx-card-top">
+                    <h3>${m.name}</h3>
+                    <div class="${chipCls}">${chipContent}</div>
+                </div>
+                <div class="rx-card-date">📅 Resepti vanhenee ${formatDate(m.prescriptionValidUntil)}</div>
+                ${refillBadge(m)}
+            </div>`;
         });
         html += `</div>`;
     }

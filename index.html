@@ -22,7 +22,10 @@
         .btn-secondary:hover { background:#5a6268; }
         .btn-danger { background:#dc3545; color:white; }
         .btn-danger:hover { background:#c82333; }
-        .data-buttons { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px; padding-top:20px; border-top:2px solid #eee; }
+        .btn-outline { background:white; color:#0B6E8C; border:2px solid #0B6E8C; }
+        .btn-outline:hover { background:#f0f8fb; }
+        .top-nav { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px; }
+        .top-nav button { margin-bottom:0; }
 
         #saveStatus { position:fixed; top:0; left:0; right:0; padding:8px; text-align:center; font-size:13px; font-weight:700; z-index:9998; transition:opacity 0.5s; opacity:0; }
 
@@ -71,12 +74,6 @@
         .med-card.hero .badge { background:rgba(255,255,255,0.9); }
         .med-buttons { margin-top:14px; }
         .med-buttons button { margin-bottom:8px; }
-        .history-toggle-small { background:none !important; border:none; color:#0B6E8C; font-size:13px; font-weight:700; cursor:pointer; width:auto !important; padding:4px 0 !important; margin:8px 0 0 !important; text-decoration:underline; }
-        .med-card.hero .history-toggle-small { color:white; }
-        .package-history { margin-top:8px; font-size:13px; background:rgba(0,0,0,0.04); border-radius:8px; padding:10px 12px; }
-        .med-card.hero .package-history { background:rgba(255,255,255,0.15); }
-        .package-history .hist-row { display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid rgba(0,0,0,0.08); }
-        .package-history .hist-row:last-child { border-bottom:none; }
 
         .form-card { background:#fff3cd; border:2px solid #ffc107; border-radius:12px; padding:20px; margin-bottom:18px; }
         .form-card h3 { color:#856404; margin-bottom:14px; font-size:16px; }
@@ -183,7 +180,7 @@ let isSaving = false;
 let unsubSnapshot = null;
 
 // UI-tila (ei tallenneta Firebaseen)
-let ui = { view:'dashboard', addFormOpen:false, addFormMode:'daily', editId:null, editFormMode:null, newPackageId:null, openHistory:{} };
+let ui = { view:'dashboard', addFormOpen:false, addFormMode:'daily', editId:null, editFormMode:null, newPackageId:null };
 
 // ============================
 // AUTH STATE
@@ -276,7 +273,6 @@ function normalizeLoadedData(parsed){
     if(parsed && parsed.medicines && typeof parsed.medicines === 'object'){
         // varmista että jokaisella lääkkeellä on kaikki uudet kentät (taaksepäin yhteensopivuus)
         Object.values(parsed.medicines).forEach(m => {
-            if(!Array.isArray(m.packageHistory)) m.packageHistory = [];
             if(!m.mode) m.mode = 'daily';
             if(typeof m.prescriptionTotalPackages === 'undefined') m.prescriptionTotalPackages = null;
             if(typeof m.prescriptionPackagesUsed === 'undefined') m.prescriptionPackagesUsed = 0;
@@ -364,15 +360,14 @@ window.saveNewMedicine = async () => {
         name, mode,
         prescriptionValidUntil: rx || null,
         prescriptionTotalPackages: total,
-        prescriptionPackagesUsed: used,
-        packageHistory: []
+        prescriptionPackagesUsed: used
     };
 
     if(mode === 'daily'){
         const size  = parseFloat(document.getElementById('newMedSize').value);
         const dose  = parseFloat(document.getElementById('newMedDose').value);
         const start = document.getElementById('newMedStart').value || getTodayString();
-        if(!size || size <= 0){ err.textContent = 'Anna pakkauksen pillimäärä (yli 0).'; return; }
+        if(!size || size <= 0){ err.textContent = 'Anna pakkauksen pillerimäärä (yli 0).'; return; }
         if(!dose || dose <= 0){ err.textContent = 'Anna annos päivässä (yli 0).'; return; }
         med.packageSize = size; med.dosePerDay = dose; med.startDate = start;
     } else {
@@ -410,7 +405,7 @@ window.saveEditMedicine = async (id) => {
         const size  = parseFloat(document.getElementById('editSize_'+id).value);
         const dose  = parseFloat(document.getElementById('editDose_'+id).value);
         const start = document.getElementById('editStart_'+id).value;
-        if(!size || size <= 0){ err.textContent = 'Anna pakkauksen pillimäärä (yli 0).'; return; }
+        if(!size || size <= 0){ err.textContent = 'Anna pakkauksen pillerimäärä (yli 0).'; return; }
         if(!dose || dose <= 0){ err.textContent = 'Anna annos päivässä (yli 0).'; return; }
         if(!start){ err.textContent = 'Anna pakkauksen aloituspäivä.'; return; }
         m.packageSize = size; m.dosePerDay = dose; m.startDate = start;
@@ -447,11 +442,8 @@ window.saveNewPackage = async (id) => {
     const totalRaw = document.getElementById('pkgTotal_'+id).value;
     const err   = document.getElementById('pkgError_'+id);
 
-    if(!size || size <= 0){ err.textContent = 'Anna pakkauksen pillimäärä (yli 0).'; return; }
+    if(!size || size <= 0){ err.textContent = 'Anna pakkauksen pillerimäärä (yli 0).'; return; }
     if(!dose || dose <= 0){ err.textContent = 'Anna annos päivässä (yli 0).'; return; }
-
-    m.packageHistory = m.packageHistory || [];
-    m.packageHistory.push({ startDate: m.startDate, packageSize: m.packageSize, dosePerDay: m.dosePerDay, endDate: getPackageEndDate(m) });
 
     const newTotal = totalRaw ? parseInt(totalRaw, 10) : m.prescriptionTotalPackages;
     const sameRx = (rx || null) === (m.prescriptionValidUntil || null);
@@ -489,34 +481,6 @@ window.logAsNeededPackage = async (id) => {
 window.showPrescriptionsView = () => { ui.view = 'prescriptions'; render(); };
 window.showDashboard = () => { ui.view = 'dashboard'; render(); };
 
-window.toggleHistory = (id) => { ui.openHistory[id] = !ui.openHistory[id]; render(); };
-
-// ============================
-// VIENTI / TUONTI
-// ============================
-window.exportData = () => {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
-    a.download = 'laakevahti-'+getTodayString()+'.json';
-    a.click(); URL.revokeObjectURL(a.href);
-};
-window.importData = () => {
-    const input = document.createElement('input');
-    input.type='file'; input.accept='application/json';
-    input.onchange = async e => {
-        const reader = new FileReader();
-        reader.onload = async evt => {
-            try {
-                data = normalizeLoadedData(JSON.parse(evt.target.result));
-                legacyDataDetected = false;
-                await saveData(); render(); alert('Tiedot tuotu!');
-            } catch(err){ alert('Virhe tuotaessa tietoja!'); }
-        };
-        reader.readAsText(e.target.files[0]);
-    };
-    input.click();
-};
-
 // ============================
 // RENDER-APURIT
 // ============================
@@ -543,7 +507,7 @@ function renderAddForm(){
     const today = getTodayString();
     const mode = ui.addFormMode || 'daily';
     const dailyFields = mode === 'daily' ? `
-        <label for="newMedSize">Pillejä pakkauksessa</label>
+        <label for="newMedSize">Pillereitä pakkauksessa</label>
         <input type="number" id="newMedSize" min="1" step="1" placeholder="esim. 60">
 
         <label for="newMedDose">Annos päivässä</label>
@@ -588,7 +552,7 @@ function renderAddForm(){
 function renderEditForm(m){
     const mode = ui.editFormMode || m.mode || 'daily';
     const dailyFields = mode === 'daily' ? `
-        <label for="editSize_${m.id}">Pillejä pakkauksessa</label>
+        <label for="editSize_${m.id}">Pillereitä pakkauksessa</label>
         <input type="number" id="editSize_${m.id}" min="1" step="1" value="${m.packageSize||''}">
 
         <label for="editDose_${m.id}">Annos päivässä</label>
@@ -634,7 +598,7 @@ function renderNewPackageForm(m){
         <h3 style="color:#0B6E8C;margin-bottom:4px;">🆕 Uusi pakkaus: ${m.name}</h3>
         <div class="hint" style="margin-bottom:10px;">Edellinen pakkaus siirtyy historiaan.</div>
 
-        <label for="pkgSize_${m.id}">Pillejä uudessa pakkauksessa</label>
+        <label for="pkgSize_${m.id}">Pillereitä uudessa pakkauksessa</label>
         <input type="number" id="pkgSize_${m.id}" min="1" step="1" value="${m.packageSize}">
 
         <label for="pkgDose_${m.id}">Annos päivässä</label>
@@ -671,11 +635,6 @@ function renderMedCard(m, isHero){
     if(packageDays <= PACKAGE_CRITICAL_DAYS) cls += ' critical-package';
     else if(packageDays <= PACKAGE_WARNING_DAYS) cls += ' warning-package';
 
-    const hist = m.packageHistory && m.packageHistory.length ? m.packageHistory : [];
-    const historyHtml = ui.openHistory[m.id] ? `<div class="package-history">
-        ${hist.length ? hist.slice().reverse().map(h => `<div class="hist-row"><span>${formatDate(h.startDate)} – ${formatDate(h.endDate)}</span><span>${h.packageSize} kpl / ${h.dosePerDay}/pv</span></div>`).join('') : '<div>Ei aiempia pakkauksia.</div>'}
-    </div>` : '';
-
     return `<div class="${cls}">
         <div class="med-header">
             <h3>${m.name}</h3>
@@ -690,16 +649,13 @@ function renderMedCard(m, isHero){
 
         ${packageBadge(packageDays)}${rxBadge(rxDays)}${refillBadge(m)}
 
-        <div class="med-info-row" style="margin-top:10px;">📦 ${m.packageSize} kpl pakkauksessa · ${m.dosePerDay} kpl/pv</div>
+        <div class="med-info-row" style="margin-top:10px;">📦 ${m.packageSize} pilleriä pakkauksessa · ${m.dosePerDay} pilleriä/pv</div>
         <div class="med-info-row">📅 Pakkaus aloitettu ${formatDate(m.startDate)}</div>
         ${m.prescriptionValidUntil ? `<div class="med-info-row">📝 Resepti voimassa ${formatDate(m.prescriptionValidUntil)} asti</div>` : `<div class="med-info-row">📝 Reseptin voimassaoloa ei asetettu</div>`}
 
         <div class="med-buttons">
             <button class="btn-success" onclick="openNewPackage('${m.id}')">🆕 Aloita uusi pakkaus</button>
         </div>
-
-        <button class="history-toggle-small" onclick="toggleHistory('${m.id}')">${ui.openHistory[m.id] ? '▲ Piilota pakkaushistoria' : '▼ Näytä pakkaushistoria' + (hist.length ? ' ('+hist.length+')' : '')}</button>
-        ${historyHtml}
     </div>`;
 }
 
@@ -784,11 +740,13 @@ function render(){
 
     if(ui.addFormOpen){
         html += renderAddForm();
+        html += `<button class="btn-outline" onclick="showPrescriptionsView()">📋 Reseptilistaus</button>`;
     } else {
-        html += `<button class="btn-primary" onclick="showAddMedicineForm()">➕ Lisää uusi lääke</button>`;
+        html += `<div class="top-nav">
+            <button class="btn-primary" onclick="showAddMedicineForm()">➕ Lisää lääke</button>
+            <button class="btn-outline" onclick="showPrescriptionsView()">📋 Reseptit</button>
+        </div>`;
     }
-
-    html += `<button class="btn-secondary" onclick="showPrescriptionsView()">📋 Reseptilistaus</button>`;
 
     if(allMeds.length === 0){
         html += `<div class="empty-state">Ei vielä lisättyjä lääkkeitä.<br>Lisää ensimmäinen lääke yllä olevasta napista.</div>`;
@@ -804,11 +762,6 @@ function render(){
             html += `</div>`;
         }
     }
-
-    html += `<div class="data-buttons">
-        <button class="btn-secondary" onclick="exportData()">📤 Vie tiedot</button>
-        <button class="btn-secondary" onclick="importData()">📥 Tuo tiedot</button>
-    </div>`;
 
     document.getElementById('app').innerHTML = html;
 }

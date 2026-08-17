@@ -22,6 +22,8 @@
         .btn-secondary:hover { background:#5a6268; }
         .btn-danger { background:#dc3545; color:white; }
         .btn-danger:hover { background:#c82333; }
+        .btn-rx { background:linear-gradient(135deg,#f97316 0%,#fbbf24 100%); color:white; }
+        .btn-rx:hover { opacity:0.92; }
 
         #saveStatus { position:fixed; top:0; left:0; right:0; padding:8px; text-align:center; font-size:13px; font-weight:700; z-index:9998; transition:opacity 0.5s; opacity:0; }
 
@@ -120,8 +122,6 @@
         .pkg-form-body label:first-of-type { margin-top:0; }
         .pkg-form-body input { width:100%; padding:14px; border:2px solid #ddd; border-radius:10px; font-size:17px; }
         .pkg-form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-        .pkg-form-section { background:#f0f8fb; border-radius:14px; padding:16px 18px; margin-top:20px; }
-        .pkg-form-section-title { font-size:12px; font-weight:800; color:#0B6E8C; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:2px; }
         .pkg-form-body .form-error { color:#dc3545; font-size:13px; font-weight:700; margin-top:10px; min-height:18px; }
     </style>
 </head>
@@ -199,7 +199,7 @@ let isSaving = false;
 let unsubSnapshot = null;
 
 // UI-tila (ei tallenneta Firebaseen)
-let ui = { view:'dashboard', addFormOpen:false, addFormMode:'daily', editId:null, editFormMode:null, newPackageId:null };
+let ui = { view:'dashboard', addFormOpen:false, addFormMode:'daily', editId:null, editFormMode:null, newPackageId:null, newRxId:null };
 
 // ============================
 // AUTH STATE
@@ -361,7 +361,7 @@ function getPrescriptionPackagesRemaining(m){
 // ============================
 // LÄÄKKEEN LISÄYS
 // ============================
-window.showAddMedicineForm = () => { ui.addFormOpen = true; ui.addFormMode = 'daily'; ui.editId = null; ui.newPackageId = null; render(); };
+window.showAddMedicineForm = () => { ui.addFormOpen = true; ui.addFormMode = 'daily'; ui.editId = null; ui.newPackageId = null; ui.newRxId = null; render(); };
 window.cancelAddMedicine = () => { ui.addFormOpen = false; render(); };
 window.setAddFormMode = (mode) => { ui.addFormMode = mode; render(); };
 
@@ -405,7 +405,7 @@ window.saveNewMedicine = async () => {
 // ============================
 // LÄÄKKEEN MUOKKAUS
 // ============================
-window.openEditMedicine = (id) => { ui.editId = id; ui.editFormMode = (data.medicines[id] && data.medicines[id].mode) || 'daily'; ui.addFormOpen = false; ui.newPackageId = null; render(); };
+window.openEditMedicine = (id) => { ui.editId = id; ui.editFormMode = (data.medicines[id] && data.medicines[id].mode) || 'daily'; ui.addFormOpen = false; ui.newPackageId = null; ui.newRxId = null; render(); };
 window.cancelEditMedicine = () => { ui.editId = null; ui.editFormMode = null; render(); };
 window.setEditFormMode = (mode) => { ui.editFormMode = mode; render(); };
 
@@ -450,9 +450,9 @@ window.deleteMedicine = async (id) => {
 };
 
 // ============================
-// UUSI PAKKAUS (päivittäin käytettävät)
+// UUSI PAKKAUS (päivittäin käytettävät) — sama resepti, laskuri kasvaa +1
 // ============================
-window.openNewPackage = (id) => { ui.newPackageId = id; ui.addFormOpen = false; ui.editId = null; render(); };
+window.openNewPackage = (id) => { ui.newPackageId = id; ui.addFormOpen = false; ui.editId = null; ui.newRxId = null; render(); };
 window.cancelNewPackage = () => { ui.newPackageId = null; render(); };
 
 window.saveNewPackage = async (id) => {
@@ -460,30 +460,41 @@ window.saveNewPackage = async (id) => {
     const size  = parseFloat(document.getElementById('pkgSize_'+id).value);
     const dose  = parseFloat(document.getElementById('pkgDose_'+id).value);
     const start = document.getElementById('pkgStart_'+id).value || getTodayString();
-    const rx    = document.getElementById('pkgRx_'+id).value;
-    const totalRaw = document.getElementById('pkgTotal_'+id).value;
     const err   = document.getElementById('pkgError_'+id);
 
     if(!size || size <= 0){ err.textContent = 'Anna pakkauksen pillerimäärä (yli 0).'; return; }
     if(!dose || dose <= 0){ err.textContent = 'Anna annos päivässä (yli 0).'; return; }
 
-    const newTotal = totalRaw ? parseInt(totalRaw, 10) : m.prescriptionTotalPackages;
-    const sameRx = (rx || null) === (m.prescriptionValidUntil || null);
-
-    if(sameRx && m.prescriptionValidUntil){
-        // Jatketaan samalla reseptillä -> pakkauslaskuri kasvaa automaattisesti
-        m.prescriptionTotalPackages = newTotal;
+    if(m.prescriptionValidUntil){
+        // Sama resepti jatkuu -> pakkauslaskuri kasvaa automaattisesti
         m.prescriptionPackagesUsed = (m.prescriptionPackagesUsed || 0) + 1;
-    } else {
-        // Resepti vaihtui/uusittiin -> laskuri alkaa alusta tällä pakkauksella
-        m.prescriptionValidUntil = rx || null;
-        m.prescriptionTotalPackages = newTotal;
-        m.prescriptionPackagesUsed = newTotal ? 1 : 0;
     }
 
     m.startDate = start; m.packageSize = size; m.dosePerDay = dose;
 
     ui.newPackageId = null;
+    await saveData(); render();
+};
+
+// ============================
+// UUSI RESEPTI — päivittää resepti- ja pakkausmäärätiedot, nollaa laskurin
+// ============================
+window.openNewPrescription = (id) => { ui.newRxId = id; ui.addFormOpen = false; ui.editId = null; ui.newPackageId = null; render(); };
+window.cancelNewPrescription = () => { ui.newRxId = null; render(); };
+
+window.saveNewPrescription = async (id) => {
+    const m = data.medicines[id]; if(!m) return;
+    const rx = document.getElementById('rxNew_'+id).value;
+    const totalRaw = document.getElementById('rxTotal_'+id).value;
+    const err = document.getElementById('rxError_'+id);
+
+    if(!rx){ err.textContent = 'Anna reseptin voimassaolopäivä.'; return; }
+
+    m.prescriptionValidUntil = rx;
+    m.prescriptionTotalPackages = totalRaw ? parseInt(totalRaw, 10) : null;
+    m.prescriptionPackagesUsed = 0;
+
+    ui.newRxId = null;
     await saveData(); render();
 };
 
@@ -641,13 +652,16 @@ function renderEditForm(m){
 
 function renderNewPackageForm(m){
     const today = getTodayString();
+    const rxHint = m.prescriptionValidUntil
+        ? `Reseptillä käytetty ${m.prescriptionPackagesUsed||0}${m.prescriptionTotalPackages ? '/'+m.prescriptionTotalPackages : ''} pakkausta — tämä pakkaus kasvattaa laskuria automaattisesti.`
+        : `Tälle lääkkeelle ei ole asetettu reseptiä.`;
     return `<div class="pkg-form-card">
         <div class="pkg-form-header">
             <span class="pkg-form-tag">🆕 UUSI PAKKAUS</span>
             <h3>${m.name}</h3>
         </div>
         <div class="pkg-form-body">
-            <div class="hint" style="margin-bottom:4px;">Edellinen pakkaus siirtyy historiaan.</div>
+            <div class="hint" style="margin-bottom:4px;">Edellinen pakkaus siirtyy historiaan. ${rxHint}</div>
 
             <div class="pkg-form-row">
                 <div>
@@ -663,16 +677,6 @@ function renderNewPackageForm(m){
             <label for="pkgStart_${m.id}">Aloituspäivä</label>
             <input type="date" id="pkgStart_${m.id}" value="${today}">
 
-            <div class="pkg-form-section">
-                <div class="pkg-form-section-title">📝 Resepti</div>
-                <label for="pkgRx_${m.id}">Voimassa asti</label>
-                <input type="date" id="pkgRx_${m.id}" value="${m.prescriptionValidUntil||''}">
-                <div class="hint">Jätä sama päivä jos jatkat samalla reseptillä – pakkauslaskuri päivittyy automaattisesti. Vaihda päivä jos resepti uusittiin.</div>
-
-                <label for="pkgTotal_${m.id}">Pakkauksia reseptillä yhteensä</label>
-                <input type="number" id="pkgTotal_${m.id}" min="1" step="1" value="${m.prescriptionTotalPackages||''}">
-            </div>
-
             <div class="form-error" id="pkgError_${m.id}"></div>
             <div class="form-buttons">
                 <button class="btn-secondary" onclick="cancelNewPackage()">Peruuta</button>
@@ -682,9 +686,34 @@ function renderNewPackageForm(m){
     </div>`;
 }
 
+function renderNewPrescriptionForm(m){
+    return `<div class="pkg-form-card">
+        <div class="pkg-form-header" style="background:linear-gradient(135deg,#f97316 0%,#fbbf24 100%);">
+            <span class="pkg-form-tag">📝 UUSI RESEPTI</span>
+            <h3>${m.name}</h3>
+        </div>
+        <div class="pkg-form-body">
+            <div class="hint" style="margin-bottom:4px;">Nykyinen pakkaus jatkuu ennallaan — tämä vain päivittää reseptitiedot ja nollaa pakkauslaskurin.</div>
+
+            <label for="rxNew_${m.id}">Resepti voimassa asti</label>
+            <input type="date" id="rxNew_${m.id}" value="${m.prescriptionValidUntil||''}">
+
+            <label for="rxTotal_${m.id}">Pakkauksia reseptillä yhteensä</label>
+            <input type="number" id="rxTotal_${m.id}" min="1" step="1" placeholder="esim. 3" value="${m.prescriptionTotalPackages||''}">
+
+            <div class="form-error" id="rxError_${m.id}"></div>
+            <div class="form-buttons">
+                <button class="btn-secondary" onclick="cancelNewPrescription()">Peruuta</button>
+                <button class="btn-primary" onclick="saveNewPrescription('${m.id}')">Tallenna</button>
+            </div>
+        </div>
+    </div>`;
+}
+
 function renderMedCard(m, isHero){
     if(ui.editId === m.id) return renderEditForm(m);
     if(ui.newPackageId === m.id) return renderNewPackageForm(m);
+    if(ui.newRxId === m.id) return renderNewPrescriptionForm(m);
 
     const packageDays = getPackageDaysRemaining(m);
     const packageEnd  = getPackageEndDate(m);
@@ -715,12 +744,14 @@ function renderMedCard(m, isHero){
 
         <div class="med-buttons">
             <button class="btn-success" onclick="openNewPackage('${m.id}')">🆕 Aloita uusi pakkaus</button>
+            <button class="btn-rx" onclick="openNewPrescription('${m.id}')">📝 Aloita uusi resepti</button>
         </div>
     </div>`;
 }
 
 function renderAsNeededCard(m){
     if(ui.editId === m.id) return renderEditForm(m);
+    if(ui.newRxId === m.id) return renderNewPrescriptionForm(m);
 
     const rxDays = getPrescriptionDaysRemaining(m);
     const remaining = getPrescriptionPackagesRemaining(m);
@@ -742,7 +773,10 @@ function renderAsNeededCard(m){
 
         ${rxBadge(rxDays)}${refillBadge(m)}
 
-        ${m.prescriptionTotalPackages ? `<div class="med-buttons"><button class="btn-secondary" onclick="logAsNeededPackage('${m.id}')">🛒 Merkitse pakkaus ostetuksi (${remaining} jäljellä)</button></div>` : ''}
+        <div class="med-buttons">
+            ${m.prescriptionTotalPackages ? `<button class="btn-secondary" onclick="logAsNeededPackage('${m.id}')">🛒 Merkitse pakkaus ostetuksi (${remaining} jäljellä)</button>` : ''}
+            <button class="btn-rx" onclick="openNewPrescription('${m.id}')">📝 Aloita uusi resepti</button>
+        </div>
     </div>`;
 }
 

@@ -346,11 +346,16 @@ function daysFromToday(dateStr){
 }
 
 // Pakkauksen loppumispäivä = aloituspäivä + floor(pakkauskoko / annos per päivä) päivää
+// Palauttaa null jos pakkaustietoja (pillerimäärä/annos/aloituspäivä) ei ole asetettu
 function getPackageEndDate(m){
+    if(!m.packageSize || !m.dosePerDay || !m.startDate) return null;
     const totalDays = Math.floor(m.packageSize / m.dosePerDay);
     return addDaysToDate(m.startDate, totalDays);
 }
-function getPackageDaysRemaining(m){ return daysFromToday(getPackageEndDate(m)); }
+function getPackageDaysRemaining(m){
+    const end = getPackageEndDate(m);
+    return end ? daysFromToday(end) : null;
+}
 function getPrescriptionDaysRemaining(m){ return m.prescriptionValidUntil ? daysFromToday(m.prescriptionValidUntil) : null; }
 function getPrescriptionPackagesRemaining(m){
     if(!m.prescriptionTotalPackages) return null;
@@ -386,12 +391,14 @@ window.saveNewMedicine = async () => {
     };
 
     if(mode === 'daily'){
-        const size  = parseFloat(document.getElementById('newMedSize').value);
-        const dose  = parseFloat(document.getElementById('newMedDose').value);
-        const start = document.getElementById('newMedStart').value || getTodayString();
-        if(!size || size <= 0){ err.textContent = 'Anna pakkauksen pillerimäärä (yli 0).'; return; }
-        if(!dose || dose <= 0){ err.textContent = 'Anna annos päivässä (yli 0).'; return; }
-        med.packageSize = size; med.dosePerDay = dose; med.startDate = start;
+        const sizeRaw  = document.getElementById('newMedSize').value;
+        const doseRaw  = document.getElementById('newMedDose').value;
+        const startRaw = document.getElementById('newMedStart').value;
+        const size = sizeRaw ? parseFloat(sizeRaw) : null;
+        const dose = doseRaw ? parseFloat(doseRaw) : null;
+        med.packageSize = (size && size > 0) ? size : null;
+        med.dosePerDay  = (dose && dose > 0) ? dose : null;
+        med.startDate   = startRaw || ((med.packageSize && med.dosePerDay) ? getTodayString() : null);
     } else {
         med.packageSize = null; med.dosePerDay = null; med.startDate = null;
     }
@@ -424,13 +431,14 @@ window.saveEditMedicine = async (id) => {
     const used  = usedRaw !== '' ? parseInt(usedRaw, 10) : 0;
 
     if(mode === 'daily'){
-        const size  = parseFloat(document.getElementById('editSize_'+id).value);
-        const dose  = parseFloat(document.getElementById('editDose_'+id).value);
-        const start = document.getElementById('editStart_'+id).value;
-        if(!size || size <= 0){ err.textContent = 'Anna pakkauksen pillerimäärä (yli 0).'; return; }
-        if(!dose || dose <= 0){ err.textContent = 'Anna annos päivässä (yli 0).'; return; }
-        if(!start){ err.textContent = 'Anna pakkauksen aloituspäivä.'; return; }
-        m.packageSize = size; m.dosePerDay = dose; m.startDate = start;
+        const sizeRaw  = document.getElementById('editSize_'+id).value;
+        const doseRaw  = document.getElementById('editDose_'+id).value;
+        const startRaw = document.getElementById('editStart_'+id).value;
+        const size = sizeRaw ? parseFloat(sizeRaw) : null;
+        const dose = doseRaw ? parseFloat(doseRaw) : null;
+        m.packageSize = (size && size > 0) ? size : null;
+        m.dosePerDay  = (dose && dose > 0) ? dose : null;
+        m.startDate   = startRaw || ((m.packageSize && m.dosePerDay) ? getTodayString() : null);
     } else {
         m.packageSize = null; m.dosePerDay = null; m.startDate = null;
     }
@@ -543,6 +551,7 @@ window.resetThresholds = () => {
 // RENDER-APURIT
 // ============================
 function packageBadge(days){
+    if(days === null) return '';
     if(days <= thresholds.packageCriticalDays) return `<span class="badge badge-package-critical">🔴 Pakkaus ${days<=0?'on loppunut':'loppuu '+days+' pv kuluttua'}</span>`;
     if(days <= thresholds.packageWarningDays)  return `<span class="badge badge-package-warning">🟡 Pakkaus loppumassa (${days} pv)</span>`;
     return '';
@@ -562,18 +571,17 @@ function refillBadge(m){
 }
 
 function renderAddForm(){
-    const today = getTodayString();
     const mode = ui.addFormMode || 'daily';
     const dailyFields = mode === 'daily' ? `
-        <label for="newMedSize">Pillereitä pakkauksessa</label>
+        <label for="newMedSize">Pillereitä pakkauksessa (valinnainen)</label>
         <input type="number" id="newMedSize" min="1" step="1" placeholder="esim. 60">
 
-        <label for="newMedDose">Annos päivässä</label>
+        <label for="newMedDose">Annos päivässä (valinnainen)</label>
         <input type="number" id="newMedDose" min="0.5" step="0.5" placeholder="esim. 2">
-        <div class="hint">Sovellus laskee automaattisesti joka päivä yhden annoksen otetuksi.</div>
+        <div class="hint">Sovellus laskee automaattisesti joka päivä yhden annoksen otetuksi. Voit jättää tyhjäksi jos et vielä tiedä määriä — täytä myöhemmin "Aloita uusi pakkaus" -toiminnolla.</div>
 
-        <label for="newMedStart">Nykyisen pakkauksen aloituspäivä</label>
-        <input type="date" id="newMedStart" value="${today}">` :
+        <label for="newMedStart">Nykyisen pakkauksen aloituspäivä (valinnainen)</label>
+        <input type="date" id="newMedStart">` :
         `<div class="hint">Tarvittaessa käytettävälle lääkkeelle ei tarvita annostustietoja – seurataan vain reseptiä ja pakkausmäärää.</div>`;
 
     return `<div class="form-card">
@@ -593,7 +601,7 @@ function renderAddForm(){
         <label for="newMedTotal">Pakkauksia reseptillä yhteensä (valinnainen, esim. 3)</label>
         <input type="number" id="newMedTotal" min="1" step="1" placeholder="esim. 3">
 
-        <label for="newMedUsed">Joista jo käytetty/ostettu</label>
+        <label for="newMedUsed">Joista jo käytetty/ostettu (valinnainen)</label>
         <input type="number" id="newMedUsed" min="0" step="1" value="1">
         <div class="hint">Jos lisäät lääkkeen, jota jo käytät, tämä on yleensä 1.</div>
 
@@ -610,14 +618,14 @@ function renderAddForm(){
 function renderEditForm(m){
     const mode = ui.editFormMode || m.mode || 'daily';
     const dailyFields = mode === 'daily' ? `
-        <label for="editSize_${m.id}">Pillereitä pakkauksessa</label>
+        <label for="editSize_${m.id}">Pillereitä pakkauksessa (valinnainen)</label>
         <input type="number" id="editSize_${m.id}" min="1" step="1" value="${m.packageSize||''}">
 
-        <label for="editDose_${m.id}">Annos päivässä</label>
+        <label for="editDose_${m.id}">Annos päivässä (valinnainen)</label>
         <input type="number" id="editDose_${m.id}" min="0.5" step="0.5" value="${m.dosePerDay||''}">
 
-        <label for="editStart_${m.id}">Nykyisen pakkauksen aloituspäivä</label>
-        <input type="date" id="editStart_${m.id}" value="${m.startDate||getTodayString()}">` :
+        <label for="editStart_${m.id}">Nykyisen pakkauksen aloituspäivä (valinnainen)</label>
+        <input type="date" id="editStart_${m.id}" value="${m.startDate||''}">` :
         `<div class="hint">Tarvittaessa käytettävälle lääkkeelle ei tarvita annostustietoja.</div>`;
 
     return `<div class="med-card">
@@ -631,13 +639,13 @@ function renderEditForm(m){
         <label for="editName_${m.id}">Lääkkeen nimi</label>
         <input type="text" id="editName_${m.id}" value="${m.name}">
 
-        <label for="editRx_${m.id}">Resepti voimassa asti</label>
+        <label for="editRx_${m.id}">Resepti voimassa asti (valinnainen)</label>
         <input type="date" id="editRx_${m.id}" value="${m.prescriptionValidUntil||''}">
 
-        <label for="editTotal_${m.id}">Pakkauksia reseptillä yhteensä</label>
+        <label for="editTotal_${m.id}">Pakkauksia reseptillä yhteensä (valinnainen)</label>
         <input type="number" id="editTotal_${m.id}" min="1" step="1" value="${m.prescriptionTotalPackages||''}">
 
-        <label for="editUsed_${m.id}">Joista käytetty/ostettu</label>
+        <label for="editUsed_${m.id}">Joista käytetty/ostettu (valinnainen)</label>
         <input type="number" id="editUsed_${m.id}" min="0" step="1" value="${m.prescriptionPackagesUsed||0}">
 
         ${dailyFields}
@@ -666,11 +674,11 @@ function renderNewPackageForm(m){
             <div class="pkg-form-row">
                 <div>
                     <label for="pkgSize_${m.id}">Pillereitä pakkauksessa</label>
-                    <input type="number" id="pkgSize_${m.id}" min="1" step="1" value="${m.packageSize}">
+                    <input type="number" id="pkgSize_${m.id}" min="1" step="1" value="${m.packageSize||''}">
                 </div>
                 <div>
                     <label for="pkgDose_${m.id}">Annos päivässä</label>
-                    <input type="number" id="pkgDose_${m.id}" min="0.5" step="0.5" value="${m.dosePerDay}">
+                    <input type="number" id="pkgDose_${m.id}" min="0.5" step="0.5" value="${m.dosePerDay||''}">
                 </div>
             </div>
 
@@ -718,11 +726,20 @@ function renderMedCard(m, isHero){
     const packageDays = getPackageDaysRemaining(m);
     const packageEnd  = getPackageEndDate(m);
     const rxDays      = getPrescriptionDaysRemaining(m);
+    const hasPackageInfo = packageDays !== null;
 
     let cls = 'med-card';
-    if(isHero) cls += ' hero';
-    if(packageDays <= thresholds.packageCriticalDays) cls += ' critical-package';
-    else if(packageDays <= thresholds.packageWarningDays) cls += ' warning-package';
+    if(isHero && hasPackageInfo) cls += ' hero';
+    if(hasPackageInfo){
+        if(packageDays <= thresholds.packageCriticalDays) cls += ' critical-package';
+        else if(packageDays <= thresholds.packageWarningDays) cls += ' warning-package';
+    }
+
+    const packageSection = hasPackageInfo
+        ? `<div class="med-days-number">${packageDays}</div>
+           <div class="med-days-label">päivää lääkettä jäljellä (loppuu noin ${formatDate(packageEnd)})</div>
+           ${packageBadge(packageDays)}`
+        : `<div class="med-info-row" style="font-style:italic;color:#999;">📦 Pakkaustietoja ei asetettu — paina "Aloita uusi pakkaus" kun tiedät määrät</div>`;
 
     return `<div class="${cls}">
         <div class="med-header">
@@ -733,13 +750,12 @@ function renderMedCard(m, isHero){
             </div>
         </div>
 
-        <div class="med-days-number">${packageDays}</div>
-        <div class="med-days-label">päivää lääkettä jäljellä (loppuu noin ${formatDate(packageEnd)})</div>
+        ${packageSection}
 
-        ${packageBadge(packageDays)}${rxBadge(rxDays)}${refillBadge(m)}
+        ${rxBadge(rxDays)}${refillBadge(m)}
 
-        <div class="med-info-row" style="margin-top:10px;">📦 ${m.packageSize} pilleriä pakkauksessa · ${m.dosePerDay} pilleriä/pv</div>
-        <div class="med-info-row">📅 Pakkaus aloitettu ${formatDate(m.startDate)}</div>
+        ${(m.packageSize && m.dosePerDay) ? `<div class="med-info-row" style="margin-top:10px;">📦 ${m.packageSize} pilleriä pakkauksessa · ${m.dosePerDay} pilleriä/pv</div>` : ''}
+        ${m.startDate ? `<div class="med-info-row">📅 Pakkaus aloitettu ${formatDate(m.startDate)}</div>` : ''}
         ${m.prescriptionValidUntil ? `<div class="med-info-row">📝 Resepti voimassa ${formatDate(m.prescriptionValidUntil)} asti</div>` : `<div class="med-info-row">📝 Reseptin voimassaoloa ei asetettu</div>`}
 
         <div class="med-buttons">
@@ -862,7 +878,13 @@ function render(){
     const dailyMeds = allMeds.filter(m => (m.mode || 'daily') === 'daily');
     const asNeededMeds = allMeds.filter(m => m.mode === 'asNeeded');
 
-    dailyMeds.sort((a,b) => getPackageDaysRemaining(a) - getPackageDaysRemaining(b));
+    dailyMeds.sort((a,b) => {
+        const da = getPackageDaysRemaining(a), db = getPackageDaysRemaining(b);
+        if(da === null && db === null) return a.name.localeCompare(b.name);
+        if(da === null) return 1;
+        if(db === null) return -1;
+        return da - db;
+    });
     asNeededMeds.sort((a,b) => {
         const da = getPrescriptionDaysRemaining(a), db = getPrescriptionDaysRemaining(b);
         if(da === null && db === null) return a.name.localeCompare(b.name);

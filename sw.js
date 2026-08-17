@@ -1,4 +1,4 @@
-const CACHE_NAME = 'laakevahti-v9';
+const CACHE_NAME = 'laakevahti-v11';
 const ASSETS = [
   './',
   './index.html',

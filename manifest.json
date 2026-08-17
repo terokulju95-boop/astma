@@ -1,10 +1,11 @@
 {
-  "name": "Astmalääkkeen Seuranta",
-  "short_name": "Astmalääke",
+  "name": "Lääkevahti",
+  "short_name": "Lääkevahti",
+  "description": "Seuraa reseptejä, lääkemääriä ja pakkausten riittävyyttä.",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#667eea",
-  "theme_color": "#667eea",
+  "background_color": "#0B6E8C",
+  "theme_color": "#0B6E8C",
   "lang": "fi",
   "icons": [
     {

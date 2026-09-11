@@ -1,4 +1,7 @@
-const CACHE_NAME = 'laakevahti-v14';
+// MUISTA nostaa tämä joka julkaisussa. Service worker on cache-first,
+// joten muuttumaton versio tarkoittaa että puhelin tarjoilee vanhaa
+// index.html:ää loputtomiin eikä muutos koskaan näy.
+const CACHE_NAME = 'laakevahti-v15';
 const ASSETS = [
   './',
   './index.html',

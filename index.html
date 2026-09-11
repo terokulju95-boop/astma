@@ -123,6 +123,14 @@
         .pkg-form-body input { width:100%; padding:14px; border:2px solid #ddd; border-radius:10px; font-size:17px; }
         .pkg-form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
         .pkg-form-body .form-error { color:#dc3545; font-size:13px; font-weight:700; margin-top:10px; min-height:18px; }
+
+        /* Kauppalistaan lisäys – oranssi on Kauppalista-sovelluksen oma korostusväri,
+           joten nappi tunnistaa itsensä toiseen sovellukseen kuuluvaksi. */
+        .btn-cart { background:linear-gradient(135deg,#ff9830 0%,#ffb366 100%); color:#1a1a1a; }
+        .btn-cart:hover { opacity:0.92; }
+        .btn-cart:disabled { opacity:0.55; cursor:default; }
+        .badge-cart { background:#ffe8cc; color:#8a4b00; }
+        .med-card.hero .badge-cart { background:rgba(255,255,255,0.9); color:#8a4b00; }
     </style>
 </head>
 <body>
@@ -157,7 +165,10 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+    getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot,
+    collection, getDocs, arrayUnion
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import {
     getAuth,
     signInWithEmailAndPassword,
@@ -178,6 +189,169 @@ const app      = initializeApp(firebaseConfig);
 const db       = getFirestore(app);
 const auth     = getAuth(app);
 const DATA_DOC = doc(db, "astmalaake", "data");
+
+// ============================================================
+//  KAUPPALISTA-INTEGRAATIO
+//  Kauppalista-sovellus käyttää SAMAA Firebase-projektia, joten tästä
+//  voidaan kirjoittaa suoraan sen omaan polkuun. Kauppalistan koodiin
+//  ei tarvitse koskea: se kuuntelee koko lists-kokoelmaa onSnapshotilla,
+//  joten lisätty tuote ilmestyy sen ruudulle itsestään.
+//
+//  Kohde on kiinteä: profiili ISKÄ, lista APTEEKKI. Kauppalistan avoin
+//  lista ja valittu profiili elävät vain sen oman puhelimen
+//  localStoragessa, joten niitä ei voi täältä tietää.
+//
+//  'ISKÄ' kirjoitetaan \u00C4-pakosarjalla, koska se on Firestore-
+//  dokumentin TUNNISTE. Jos tiedosto joskus tallentuu väärällä
+//  merkistöllä tai hajotetulla ä:llä (A + tarke), tunniste ei enää
+//  täsmäisi kauppalistan omaan ja tuotteet valuisivat väärään paikkaan.
+// ============================================================
+const KAUPPA_KAYTTAJA = 'ISK\u00C4';
+const KAUPPA_LISTA    = 'APTEEKKI';
+const KAUPPA_KATEGORIA = 'apteekki';   // Kauppalistan peruskategoria 💊
+
+const kauppaCol = () => collection(db, 'kauppalista', KAUPPA_KAYTTAJA, 'lists');
+const kauppaRef = (id) => doc(db, 'kauppalista', KAUPPA_KAYTTAJA, 'lists', id);
+// Kauppalistan oma rid(): 9 merkkiä base36:na. Pidetään sama muoto,
+// jottei sen listoille synny kahdenlaisia tunnisteita.
+const kauppaId  = () => Math.random().toString(36).slice(2, 11);
+
+// APTEEKKI-listan sisältö reaaliajassa, jotta kortissa voi näkyä
+// "jo listalla" eikä samaa lääkettä lisätä kahdesti eri puhelimista.
+let kauppaLista = null;          // { id, items } tai null jos listaa ei vielä ole
+let kauppaUnsub = null;
+let kauppaLisays = null;         // käynnissä olevan lisäyksen lääke-id
+
+function tilaaKauppalista(){
+    if(kauppaUnsub) return;
+    kauppaUnsub = onSnapshot(kauppaCol(), snap => {
+        let loydetty = null;
+        snap.forEach(d => {
+            const l = d.data() || {};
+            if((l.name || '').toUpperCase() === KAUPPA_LISTA){
+                loydetty = { id: d.id, items: Array.isArray(l.items) ? l.items : [] };
+            }
+        });
+        kauppaLista = loydetty;
+        // Avointa lomaketta ei piirretä uusiksi: kentissä olevat
+        // kirjoitukset katoaisivat kesken täytön.
+        if(!ui.addFormOpen && !ui.editId && !ui.newPackageId && !ui.newRxId) render();
+    }, err => {
+        // Kauppalista on lisäominaisuus – sen kaatuminen ei saa estää
+        // lääkkeiden seurantaa, joten virhe vain kirjataan.
+        console.warn('Kauppalistan kuuntelu epäonnistui', err);
+    });
+}
+
+function lopetaKauppalista(){
+    if(kauppaUnsub){ kauppaUnsub(); kauppaUnsub = null; }
+    kauppaLista = null;
+}
+
+// Kauppalista tallentaa tuotteiden nimet isoilla kirjaimilla (addNamed
+// tekee toUpperCase). Sama muoto myös täältä, muuten vertailu ei osu
+// eikä lista näytä yhtenäiseltä.
+const kauppaNimi = (s) => String(s || '').trim().toUpperCase();
+
+// Tässä sovelluksessa ei ole Firestoren pysyvää offline-varastoa, joten
+// kirjoituksen lupaus ratkeaa vasta kun palvelin kuittaa sen. Ilman
+// verkkoa se jäisi roikkumaan ja nappi näyttäisi jumittuneelta.
+// Kirjoitus jää silti jonoon ja menee läpi kun verkko palaa – vain
+// odottaminen lopetetaan.
+const KAUPPA_ODOTUS_MS = 4000;
+function odotaKirjoitusta(lupaus){
+    let ajastin;
+    const aikakatkaisu = new Promise(resolve => {
+        ajastin = setTimeout(() => resolve('odottaa'), KAUPPA_ODOTUS_MS);
+    });
+    return Promise.race([
+        lupaus.then(() => 'valmis'),
+        aikakatkaisu
+    ]).finally(() => clearTimeout(ajastin));
+}
+
+function onKauppalistalla(nimi){
+    if(!kauppaLista) return false;
+    const n = kauppaNimi(nimi);
+    return (kauppaLista.items || []).some(i => !i.done && kauppaNimi(i.name) === n);
+}
+
+window.lisaaKauppalistaan = async (medId) => {
+    const m = data.medicines[medId];
+    if(!m || kauppaLisays) return;
+    const nimi = kauppaNimi(m.name);
+    if(!nimi) return;
+
+    if(onKauppalistalla(nimi)){
+        showSaveStatus('🛒 ' + nimi + ' on jo listalla', '#f97316');
+        return;
+    }
+
+    kauppaLisays = medId;
+    render();
+    showSaveStatus('🛒 Lisätään kauppalistaan...', '#ff9830');
+
+    const tuote = { id: kauppaId(), name: nimi, qty: '1', done: false, cat: KAUPPA_KATEGORIA };
+
+    try {
+        // Kuuntelija ei ole välttämättä ehtinyt kertoa listasta vielä,
+        // joten haetaan varmuuden vuoksi suoraan.
+        let kohde = kauppaLista;
+        let maxOrder = -1;
+        if(!kohde){
+            const snap = await getDocs(kauppaCol());
+            snap.forEach(d => {
+                const l = d.data() || {};
+                if(typeof l.order === 'number' && l.order > maxOrder) maxOrder = l.order;
+                if((l.name || '').toUpperCase() === KAUPPA_LISTA){
+                    kohde = { id: d.id, items: Array.isArray(l.items) ? l.items : [] };
+                }
+            });
+            // Haku saattoi paljastaa että tuote lisättiin juuri toisaalta
+            if(kohde && (kohde.items || []).some(i => !i.done && kauppaNimi(i.name) === nimi)){
+                showSaveStatus('🛒 ' + nimi + ' on jo listalla', '#f97316');
+                return;
+            }
+        }
+
+        let kirjoitus;
+        if(kohde){
+            // arrayUnion koskee vain yhtä alkiota. Jos koko items-taulukko
+            // kirjoitettaisiin uusiksi, samaan aikaan kaupassa tehty
+            // rastitus jäisi tämän kirjoituksen alle.
+            kirjoitus = updateDoc(kauppaRef(kohde.id), {
+                items: arrayUnion(tuote),
+                updatedAt: Date.now()
+            });
+        } else {
+            // Listaa ei ole vielä olemassa – luodaan se. Kenttien nimet
+            // ovat samat kuin kauppalistan omassa saveList-funktiossa.
+            kirjoitus = setDoc(kauppaRef(kauppaId()), {
+                name: KAUPPA_LISTA,
+                order: maxOrder + 1,
+                items: [tuote],
+                updatedAt: Date.now()
+            });
+        }
+        // Virhe käsitellään alla catchissa, mutta lupaus on merkittävä
+        // käsitellyksi jo tässä: aikakatkaisun jälkeen catch ei enää ole
+        // kuuntelemassa, ja selain valittaisi käsittelemättömästä virheestä.
+        kirjoitus.catch(e => console.error('Kauppalistaan lisäys epäonnistui', e));
+
+        const tulos = await odotaKirjoitusta(kirjoitus);
+        if(tulos === 'odottaa'){
+            showSaveStatus('⏳ Lähetetään kun verkko palaa', '#f59e0b');
+        } else {
+            showSaveStatus('✅ ' + nimi + ' lisätty kauppalistaan', '#22c55e');
+        }
+    } catch(e){
+        console.error('Kauppalistaan lisäys epäonnistui', e);
+        showSaveStatus('❌ Kauppalistaan lisäys epäonnistui', '#dc2626');
+    } finally {
+        kauppaLisays = null;
+        render();
+    }
+};
 
 // ============================
 // ASETUKSET (hälytysrajat) — muokattavissa Asetukset-näkymästä, oletukset alla
@@ -210,11 +384,13 @@ onAuthStateChanged(auth, user => {
         document.getElementById('userBar').style.display = 'flex';
         document.getElementById('userEmail').textContent = user.email;
         loadFromFirebase();
+        tilaaKauppalista();
     } else {
         document.getElementById('loginScreen').style.display = 'flex';
         document.getElementById('userBar').style.display = 'none';
         document.getElementById('app').innerHTML = '<p style="text-align:center;color:#999;">Ladataan...</p>';
         if(unsubSnapshot){ unsubSnapshot(); unsubSnapshot = null; }
+        lopetaKauppalista();
     }
 });
 
@@ -570,6 +746,17 @@ function refillBadge(m){
     return `<span class="badge badge-neutral">🧾 Reseptillä jäljellä ${remaining} pakkausta (${m.prescriptionPackagesUsed}/${m.prescriptionTotalPackages})</span>`;
 }
 
+// Kauppalistan tila näkyy sekä merkkinä että napissa: merkki kertoo
+// tilanteen silmäyksellä, nappi estää saman lääkkeen lisäämisen kahdesti.
+function kauppaBadge(m){
+    return onKauppalistalla(m.name) ? `<span class="badge badge-cart">🛒 Kauppalistalla</span>` : '';
+}
+function kauppaNappi(m){
+    if(kauppaLisays === m.id)   return `<button class="btn-cart" disabled>🛒 Lisätään...</button>`;
+    if(onKauppalistalla(m.name)) return `<button class="btn-cart" disabled>🛒 Jo kauppalistalla</button>`;
+    return `<button class="btn-cart" onclick="lisaaKauppalistaan('${m.id}')">🛒 Lisää kauppalistaan</button>`;
+}
+
 function renderAddForm(){
     const mode = ui.addFormMode || 'daily';
     const dailyFields = mode === 'daily' ? `
@@ -752,13 +939,14 @@ function renderMedCard(m, isHero){
 
         ${packageSection}
 
-        ${rxBadge(rxDays)}${refillBadge(m)}
+        ${rxBadge(rxDays)}${refillBadge(m)}${kauppaBadge(m)}
 
         ${(m.packageSize && m.dosePerDay) ? `<div class="med-info-row" style="margin-top:10px;">📦 ${m.packageSize} pilleriä pakkauksessa · ${m.dosePerDay} pilleriä/pv</div>` : ''}
         ${m.startDate ? `<div class="med-info-row">📅 Pakkaus aloitettu ${formatDate(m.startDate)}</div>` : ''}
         ${m.prescriptionValidUntil ? `<div class="med-info-row">📝 Resepti voimassa ${formatDate(m.prescriptionValidUntil)} asti</div>` : `<div class="med-info-row">📝 Reseptin voimassaoloa ei asetettu</div>`}
 
         <div class="med-buttons">
+            ${kauppaNappi(m)}
             <button class="btn-success" onclick="openNewPackage('${m.id}')">🆕 Aloita uusi pakkaus</button>
             <button class="btn-rx" onclick="openNewPrescription('${m.id}')">📝 Aloita uusi resepti</button>
         </div>
@@ -787,10 +975,11 @@ function renderAsNeededCard(m){
 
         ${m.prescriptionValidUntil ? `<div class="med-info-row">📝 Resepti voimassa ${formatDate(m.prescriptionValidUntil)} asti${rxDays!==null ? ' ('+rxDays+' pv)' : ''}</div>` : `<div class="med-info-row">📝 Reseptin voimassaoloa ei asetettu</div>`}
 
-        ${rxBadge(rxDays)}${refillBadge(m)}
+        ${rxBadge(rxDays)}${refillBadge(m)}${kauppaBadge(m)}
 
         <div class="med-buttons">
-            ${m.prescriptionTotalPackages ? `<button class="btn-secondary" onclick="logAsNeededPackage('${m.id}')">🛒 Merkitse pakkaus ostetuksi (${remaining} jäljellä)</button>` : ''}
+            ${kauppaNappi(m)}
+            ${m.prescriptionTotalPackages ? `<button class="btn-secondary" onclick="logAsNeededPackage('${m.id}')">📦 Merkitse pakkaus ostetuksi (${remaining} jäljellä)</button>` : ''}
             <button class="btn-rx" onclick="openNewPrescription('${m.id}')">📝 Aloita uusi resepti</button>
         </div>
     </div>`;

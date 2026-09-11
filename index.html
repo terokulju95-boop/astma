@@ -1,167 +1,470 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lääkevahti</title>
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
-    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
-    <meta name="theme-color" content="#0B6E8C">
-    <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif; background:linear-gradient(135deg,#0B6E8C 0%,#1AC0B8 100%); min-height:100vh; padding:20px; }
-        .container { max-width:520px; margin:0 auto; background:white; border-radius:20px; padding:30px; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
-        h1 { color:#0B6E8C; text-align:center; margin-bottom:25px; font-size:28px; }
-        button { width:100%; padding:15px; border:none; border-radius:10px; font-size:18px; font-weight:bold; cursor:pointer; transition:all 0.3s; margin-bottom:10px; }
-        .btn-primary { background:linear-gradient(135deg,#0B6E8C 0%,#1AC0B8 100%); color:white; }
-        .btn-primary:hover { transform:translateY(-2px); box-shadow:0 5px 15px rgba(11,110,140,0.4); }
-        .btn-success { background:#28a745; color:white; }
-        .btn-success:hover { background:#218838; }
-        .btn-secondary { background:#6c757d; color:white; font-size:14px; }
-        .btn-secondary:hover { background:#5a6268; }
-        .btn-danger { background:#dc3545; color:white; }
-        .btn-danger:hover { background:#c82333; }
-        .btn-rx { background:linear-gradient(135deg,#f97316 0%,#fbbf24 100%); color:white; }
-        .btn-rx:hover { opacity:0.92; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Lääkevahti</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
+<link rel="apple-touch-icon" href="icons/icon-192x192.png">
+<meta name="theme-color" content="#0B6E8C" id="themeColorMeta">
+<style>
+/* ============================================================
+   MUUTTUJAT
+   Kaikki värit, pyöristykset, varjot ja mitat tulevat täältä.
+   Teeman vaihto muuttaa vain näitä arvoja – yksikään komponentti
+   ei tiedä mitään väreistä, joten uuden teeman lisääminen ei
+   vaadi muutoksia muualle.
 
-        #saveStatus { position:fixed; top:0; left:0; right:0; padding:8px; text-align:center; font-size:13px; font-weight:700; z-index:9998; transition:opacity 0.5s; opacity:0; }
+   --h on korostusvärin sävy (0-360). Sekä --brand että --brand-2
+   johdetaan siitä, joten liukusäädin riittää värin vaihtamiseen.
+   ============================================================ */
+:root{
+    --h:194;
+    --brand:hsl(var(--h) 78% 30%);
+    --brand-2:hsl(calc(var(--h) - 17) 76% 43%);
+    --brand-soft:hsl(var(--h) 60% 96%);
+    --brand-text:hsl(var(--h) 72% 27%);
+    --on-brand:#fff;          /* JS laskee taustan kirkkauden mukaan */
+    --on-brand-2:#fff;
 
-        /* Kirjautumisruutu */
-        #loginScreen { position:fixed; inset:0; background:linear-gradient(135deg,#0B6E8C 0%,#1AC0B8 100%); display:flex; align-items:center; justify-content:center; z-index:9999; padding:20px; }
-        .login-box { background:white; border-radius:20px; padding:36px 28px; width:100%; max-width:360px; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
-        .login-title { font-size:26px; font-weight:800; color:#0B6E8C; text-align:center; margin-bottom:6px; }
-        .login-sub { font-size:14px; color:#888; text-align:center; margin-bottom:24px; }
-        .login-box label { display:block; font-size:13px; font-weight:700; color:#444; margin-bottom:5px; }
-        .login-box input[type="email"], .login-box input[type="password"] { width:100%; padding:12px 14px; border:2px solid #ddd; border-radius:10px; font-size:16px; margin-bottom:14px; transition:border 0.2s; outline:none; }
-        .login-box input:focus { border-color:#0B6E8C; }
-        .login-btn { width:100%; padding:14px; background:linear-gradient(135deg,#0B6E8C 0%,#1AC0B8 100%); color:white; border:none; border-radius:10px; font-size:17px; font-weight:700; cursor:pointer; transition:opacity 0.2s; margin-bottom:0; }
-        .login-btn:hover { opacity:0.9; }
-        .login-btn:disabled { opacity:0.5; cursor:not-allowed; }
-        .login-error { color:#dc3545; font-size:13px; font-weight:700; text-align:center; margin-top:12px; min-height:20px; }
+    --bg:#EDF3F6;
+    --surface:#fff;
+    --surface-2:#F3F7F9;
+    --text:#152730;
+    --text-soft:#5A727E;
+    --text-faint:#93A7B2;
+    --border:#DCE6EB;
+    --border-strong:#C4D3DA;
 
-        /* Käyttäjäpalkki */
-        .user-bar { display:flex; justify-content:space-between; align-items:center; background:#f0f4ff; border-radius:10px; padding:10px 14px; margin-bottom:20px; font-size:13px; color:#555; }
-        .user-bar span { font-weight:600; color:#0B6E8C; font-size:12px; }
-        .logout-btn { background:none; border:none; color:#dc3545; font-size:13px; font-weight:700; cursor:pointer; width:auto; padding:4px 8px; margin:0; }
-        .logout-btn:hover { text-decoration:underline; }
+    --ok:#1E8E4A;
+    --warn:#8A6100;
+    --warn-bg:#FFF7E3;
+    --warn-border:#EAC45A;
+    --danger:#B3261E;
+    --danger-bg:#FDF1F0;
+    --danger-border:#E3A09B;
 
-        /* Lääkekortit */
-        .med-list { margin-top:6px; }
-        .med-card { background:#f8f9fa; border:2px solid #ddd; border-radius:14px; padding:20px; margin-bottom:16px; }
-        .med-card.hero { background:linear-gradient(135deg,#0B6E8C 0%,#1AC0B8 100%); color:white; border:none; box-shadow:0 8px 20px rgba(11,110,140,0.3); }
-        .med-card.warning-package:not(.hero) { border-color:#ffc107; background:#fffaf0; }
-        .med-card.critical-package:not(.hero) { border-color:#dc3545; background:#fdf2f3; }
-        .med-header { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:6px; }
-        .med-header h3 { font-size:19px; color:#0B6E8C; flex:1 1 auto; min-width:0; overflow-wrap:break-word; word-break:break-word; }
-        .med-card.hero .med-header h3 { color:white; }
-        .med-actions { display:flex; gap:6px; flex-shrink:0; }
-        .icon-btn { width:auto; padding:7px 10px; font-size:13px; margin:0; border-radius:8px; background:rgba(0,0,0,0.06); color:#333; }
-        .med-card.hero .icon-btn { background:rgba(255,255,255,0.22); color:white; }
-        .icon-btn:hover { opacity:0.8; }
-        .med-days-number { font-size:44px; font-weight:800; line-height:1; margin:8px 0 2px; }
-        .med-days-label { font-size:13px; opacity:0.85; }
-        .med-card.hero .med-days-label { opacity:0.9; }
-        .med-info-row { font-size:14px; color:#555; margin:4px 0; }
-        .med-card.hero .med-info-row { color:rgba(255,255,255,0.92); }
-        .badge { display:inline-block; padding:5px 12px; border-radius:20px; font-size:12px; font-weight:700; margin:6px 6px 0 0; }
-        .badge-package-warning { background:#fff3cd; color:#856404; }
-        .badge-package-critical { background:#f8d7da; color:#721c24; }
-        .badge-rx-warning { background:#ffe8cc; color:#8a4b00; }
-        .badge-rx-critical { background:#f8d7da; color:#721c24; }
-        .med-card.hero .badge { background:rgba(255,255,255,0.9); }
-        .med-buttons { margin-top:14px; }
-        .med-buttons button { margin-bottom:8px; }
+    --type-daily:#2563EB;      /* päivittäin käytettävä */
+    --type-asneeded:#0F9E96;   /* tarvittaessa käytettävä */
 
-        .form-card { background:#fff3cd; border:2px solid #ffc107; border-radius:12px; padding:20px; margin-bottom:18px; }
-        .form-card h3 { color:#856404; margin-bottom:14px; font-size:16px; }
-        .form-card label { display:block; font-size:13px; font-weight:700; color:#555; margin:10px 0 4px; }
-        .form-card label:first-of-type { margin-top:0; }
-        .form-card input { width:100%; padding:12px; border:2px solid #ddd; border-radius:8px; font-size:16px; }
-        .form-card .form-error { color:#dc3545; font-size:13px; font-weight:700; margin-top:8px; min-height:18px; }
-        .form-buttons { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
-        .form-buttons button { margin-bottom:0; }
-        .hint { font-size:12px; color:#888; margin-top:-2px; margin-bottom:6px; }
+    /* Pyöristykset: vain kolme kokoa koko sovelluksessa */
+    --r-btn:10px;
+    --r-card:16px;
+    --r-pill:999px;
 
-        .empty-state { text-align:center; color:#999; padding:35px 10px; }
-        .info-banner { background:#eaf6ff; border:2px solid #0B6E8C; color:#0B6E8C; border-radius:10px; padding:14px; margin-bottom:18px; font-size:13px; font-weight:600; }
+    /* Varjot: vain kaksi tasoa */
+    --sh-1:0 1px 2px rgba(16,32,40,.08);
+    --sh-2:0 10px 28px rgba(16,32,40,.16);
 
-        /* Lääketyypin valinta lomakkeessa */
-        .mode-toggle { display:flex; gap:8px; margin-bottom:14px; }
-        .mode-toggle button { flex:1; padding:10px 6px; border-radius:8px; border:2px solid #ddd; background:white; color:#555; font-size:13px; font-weight:700; margin:0; cursor:pointer; }
-        .mode-toggle button.active { background:#0B6E8C; color:white; border-color:#0B6E8C; }
+    --bw:1.5px;                /* reunan paksuus */
+    --fs:1;                    /* tekstikoko */
+    --pad:1.25rem;             /* kortin sisäreunus */
+    --gap:0.85rem;             /* korttien väli */
+}
 
-        /* Osiot (päivittäiset / tarvittaessa) */
-        .section-title { font-size:13px; color:#888; text-transform:uppercase; letter-spacing:0.5px; margin:20px 0 10px; font-weight:800; }
-        .asneeded-card { border-left:6px solid #1AC0B8; }
+/* ---------- Teemat ---------- */
+body[data-theme="metsa"]{
+    --bg:#EFF4EE; --surface:#fff; --surface-2:#F4F8F3;
+    --text:#1A2A20; --text-soft:#5B7264; --text-faint:#94A89A;
+    --border:#DEE8DF; --border-strong:#C6D6C8;
+    --brand-text:hsl(var(--h) 58% 25%);
+    --brand-soft:hsl(var(--h) 45% 95%);
+}
+body[data-theme="hiekka"]{
+    --bg:#F4EFE5; --surface:#FFFDF8; --surface-2:#F9F5EC;
+    --text:#2B2318; --text-soft:#6E6151; --text-faint:#A3937D;
+    --border:#E7DCC9; --border-strong:#D6C7AC;
+    --brand-text:hsl(var(--h) 62% 28%);
+    --brand-soft:hsl(var(--h) 55% 95%);
+}
+body[data-theme="yo"]{
+    --bg:#0F151A; --surface:#19222A; --surface-2:#212C35;
+    --text:#E9EFF3; --text-soft:#9FB3BF; --text-faint:#75909E;
+    --border:#2C3A45; --border-strong:#3C4D5A;
+    --brand:hsl(var(--h) 62% 42%);
+    --brand-2:hsl(calc(var(--h) - 17) 60% 50%);
+    --brand-text:hsl(var(--h) 70% 64%);
+    --brand-soft:hsl(var(--h) 35% 18%);
+    --warn:#F2C14E; --warn-bg:#2A2415; --warn-border:#6B5A22;
+    --danger:#FF9B91; --danger-bg:#2E1B1A; --danger-border:#7A3B37;
+    --ok:#4ADE80;
+    --type-daily:#60A5FA; --type-asneeded:#2DD4BF;
+    --sh-1:0 1px 2px rgba(0,0,0,.4);
+    --sh-2:0 10px 28px rgba(0,0,0,.55);
+}
+body[data-theme="kontrasti"]{
+    --bg:#000; --surface:#000; --surface-2:#0D0D0D;
+    --text:#fff; --text-soft:#EDEDED; --text-faint:#C9C9C9;
+    --border:#fff; --border-strong:#fff;
+    --brand:hsl(var(--h) 85% 42%);
+    --brand-2:hsl(calc(var(--h) - 17) 85% 48%);
+    --brand-text:hsl(var(--h) 100% 74%);
+    --brand-soft:#000;
+    --warn:#FFD400; --warn-bg:#000; --warn-border:#FFD400;
+    --danger:#FF6B6B; --danger-bg:#000; --danger-border:#FF6B6B;
+    --ok:#4ADE80;
+    --type-daily:#82B4FF; --type-asneeded:#4FE3D6;
+    --bw:2.5px;
+    --sh-1:none; --sh-2:none;
+}
 
-        .badge-neutral { background:#e7f3ff; color:#0B6E8C; }
+/* ---------- Tiiviys ---------- */
+body[data-density="tiivis"]{ --pad:0.85rem; --gap:0.5rem; }
 
-        /* Reseptilistaus-sivu */
-        .rx-list { margin-top:4px; }
-        .rx-card { background:#f8f9fa; border:2px solid #ddd; border-radius:14px; padding:18px 20px; margin-bottom:14px; }
-        .rx-card.rx-warning { border-color:#ffc107; background:#fffaf0; }
-        .rx-card.rx-critical { border-color:#dc3545; background:#fdf2f3; }
-        .rx-card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
-        .rx-card-top h3 { font-size:20px; color:#0B6E8C; flex:1 1 auto; min-width:0; overflow-wrap:break-word; word-break:break-word; }
-        .rx-days-chip { flex-shrink:0; text-align:center; background:#0B6E8C; color:white; border-radius:12px; padding:8px 16px; min-width:56px; }
-        .rx-days-chip .num { font-size:26px; font-weight:800; line-height:1; display:block; }
-        .rx-days-chip .unit { font-size:10px; opacity:0.9; text-transform:uppercase; letter-spacing:0.5px; }
-        .rx-days-chip.warning { background:#ffc107; color:#5c4400; }
-        .rx-days-chip.critical { background:#dc3545; color:white; }
-        .rx-card-date { font-size:15px; color:#444; font-weight:600; margin-top:10px; }
-        .rx-card .badge { margin-top:10px; }
+/* ---------- Perusta ---------- */
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:calc(16px * var(--fs));-webkit-text-size-adjust:100%}
+body{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    font-size:0.94rem;
+    line-height:1.5;
+    min-height:100vh;
+    /* Taulukkonumerot: päivämäärät ja luvut pysyvät samassa linjassa */
+    font-variant-numeric:tabular-nums;
+    font-feature-settings:"tnum" 1;
+    padding:1rem 1rem calc(4.6rem + env(safe-area-inset-bottom));
+    transition:background-color .25s,color .25s;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input{font:inherit;color:var(--text)}
+.container{max-width:34rem;margin:0 auto}
 
-        /* Uusi pakkaus -lomake */
-        .pkg-form-card { background:white; border:2px solid #e2e2e2; border-radius:18px; overflow:hidden; margin-bottom:16px; box-shadow:0 6px 18px rgba(11,110,140,0.12); }
-        .pkg-form-header { background:linear-gradient(135deg,#0B6E8C 0%,#1AC0B8 100%); color:white; padding:20px 22px; }
-        .pkg-form-tag { display:inline-block; background:rgba(255,255,255,0.25); padding:4px 12px; border-radius:20px; font-size:11px; font-weight:800; letter-spacing:0.6px; margin-bottom:8px; }
-        .pkg-form-header h3 { font-size:22px; font-weight:800; overflow-wrap:break-word; word-break:break-word; }
-        .pkg-form-body { padding:22px; }
-        .pkg-form-body label { display:block; font-size:13px; font-weight:700; color:#555; margin:16px 0 6px; }
-        .pkg-form-body label:first-of-type { margin-top:0; }
-        .pkg-form-body input { width:100%; padding:14px; border:2px solid #ddd; border-radius:10px; font-size:17px; }
-        .pkg-form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-        .pkg-form-body .form-error { color:#dc3545; font-size:13px; font-weight:700; margin-top:10px; min-height:18px; }
+h1{
+    color:var(--brand-text);text-align:center;font-size:1.5rem;
+    margin:.25rem 0 1.1rem;letter-spacing:-.02em;
+}
 
-        /* Kauppalistaan lisäys – oranssi on Kauppalista-sovelluksen oma korostusväri,
-           joten nappi tunnistaa itsensä toiseen sovellukseen kuuluvaksi. */
-        .btn-cart { background:linear-gradient(135deg,#ff9830 0%,#ffb366 100%); color:#1a1a1a; }
-        .btn-cart:hover { opacity:0.92; }
-        .btn-cart:disabled { opacity:0.55; cursor:default; }
-        .badge-cart { background:#ffe8cc; color:#8a4b00; }
-        .med-card.hero .badge-cart { background:rgba(255,255,255,0.9); color:#8a4b00; }
-    </style>
+/* ---------- Napit ---------- */
+.btn{
+    display:block;width:100%;padding:.82rem 1rem;border-radius:var(--r-btn);
+    font-size:1rem;font-weight:600;text-align:center;margin-bottom:.55rem;
+    border:var(--bw) solid transparent;transition:filter .15s,transform .08s;
+}
+.btn:active{transform:scale(.985)}
+.btn-primary{background:var(--brand);color:var(--on-brand)}
+.btn-success{background:var(--ok);color:#fff}
+.btn-secondary{background:var(--surface);color:var(--text);border-color:var(--border-strong);font-size:.9rem}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-rx{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-border)}
+.btn-cart{background:#FF9830;color:#1a1a1a}
+.btn-cart:disabled{opacity:.55;cursor:default}
+.btn:disabled{cursor:default}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.9rem}
+.btn-row .btn{margin-bottom:0}
+.btn-ghost{
+    display:inline-block;width:auto;padding:.4rem .7rem;border-radius:var(--r-btn);
+    font-size:.8rem;font-weight:600;background:var(--surface-2);
+    border:var(--bw) solid var(--border);color:var(--text-soft);margin:0 .35rem .35rem 0;
+}
+.btn-ghost.on{background:var(--brand);color:var(--on-brand);border-color:var(--brand)}
+
+/* ---------- Tallennusilmoitus ---------- */
+#saveStatus{
+    position:fixed;top:0;left:0;right:0;padding:.5rem;text-align:center;
+    font-size:.82rem;font-weight:700;z-index:60;opacity:0;transition:opacity .4s;
+    pointer-events:none;color:#fff;
+}
+
+/* ---------- Kirjautuminen ---------- */
+#loginScreen{
+    position:fixed;inset:0;background:var(--bg);
+    display:flex;align-items:center;justify-content:center;z-index:80;padding:1.25rem;
+}
+.login-box{
+    background:var(--surface);border:var(--bw) solid var(--border);
+    border-radius:var(--r-card);padding:2rem 1.6rem;width:100%;max-width:22rem;box-shadow:var(--sh-2);
+}
+.login-title{font-size:1.5rem;font-weight:800;color:var(--brand-text);text-align:center;margin-bottom:.2rem}
+.login-sub{font-size:.88rem;color:var(--text-faint);text-align:center;margin-bottom:1.4rem}
+label{display:block;font-size:.82rem;font-weight:700;color:var(--text-soft);margin:.75rem 0 .3rem}
+label:first-of-type{margin-top:0}
+input[type=email],input[type=password],input[type=text],input[type=number],input[type=date]{
+    width:100%;padding:.75rem .85rem;border:var(--bw) solid var(--border-strong);
+    border-radius:var(--r-btn);font-size:1rem;background:var(--surface);outline:none;
+    transition:border-color .15s,box-shadow .15s;
+}
+input:focus{border-color:var(--brand);box-shadow:0 0 0 3px hsl(var(--h) 70% 45% / .18)}
+.login-error{color:var(--danger);font-size:.82rem;font-weight:700;text-align:center;margin-top:.8rem;min-height:1.2rem}
+
+/* ---------- Käyttäjäpalkki ---------- */
+.user-bar{
+    display:flex;justify-content:space-between;align-items:center;gap:.6rem;
+    background:var(--surface);border:var(--bw) solid var(--border);border-radius:var(--r-btn);
+    padding:.6rem .85rem;margin-bottom:1rem;font-size:.8rem;color:var(--text-soft);
+}
+.user-bar span{font-weight:600;color:var(--brand-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.logout-btn{color:var(--danger);font-size:.82rem;font-weight:700;padding:.2rem .4rem;white-space:nowrap}
+
+/* ---------- Lääkekortit ---------- */
+.med-list{margin-top:.4rem}
+.med-card{
+    background:var(--surface);border:var(--bw) solid var(--border);
+    border-left:5px solid var(--type-daily);
+    border-radius:var(--r-card);padding:var(--pad);margin-bottom:var(--gap);
+    box-shadow:var(--sh-1);
+}
+.med-card.asneeded-card{border-left-color:var(--type-asneeded)}
+.med-card.hero{
+    background:linear-gradient(135deg,var(--brand) 0%,var(--brand-2) 100%);
+    color:var(--on-brand);border-color:transparent;border-left-color:rgba(255,255,255,.55);
+    box-shadow:var(--sh-2);
+}
+.med-card.warning-package:not(.hero){border-color:var(--warn-border);background:var(--warn-bg)}
+.med-card.critical-package:not(.hero){border-color:var(--danger-border);background:var(--danger-bg)}
+.med-header{display:flex;justify-content:space-between;align-items:flex-start;gap:.6rem;margin-bottom:.3rem}
+.med-header h3{font-size:1.12rem;color:var(--brand-text);flex:1 1 auto;min-width:0;overflow-wrap:break-word}
+.med-card.hero .med-header h3{color:var(--on-brand)}
+.med-actions{display:flex;gap:.35rem;flex-shrink:0}
+.icon-btn{
+    padding:.4rem .55rem;font-size:.85rem;border-radius:var(--r-btn);
+    background:var(--surface-2);border:var(--bw) solid var(--border);
+}
+.med-card.hero .icon-btn{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.3);color:var(--on-brand)}
+.type-chip{
+    display:inline-block;font-size:.68rem;font-weight:700;padding:.15rem .5rem;
+    border-radius:var(--r-pill);background:var(--surface-2);color:var(--type-daily);
+    border:1px solid currentColor;margin-bottom:.35rem;
+}
+.type-chip.asneeded{color:var(--type-asneeded)}
+.med-card.hero .type-chip{background:rgba(255,255,255,.2);color:var(--on-brand)}
+.med-days-number{font-size:2.6rem;font-weight:800;line-height:1;margin:.35rem 0 .1rem}
+.med-days-label{font-size:.82rem;color:var(--text-soft)}
+.med-card.hero .med-days-label{color:var(--on-brand);opacity:.9}
+.med-info-row{font-size:.87rem;color:var(--text-soft);margin:.22rem 0}
+.med-card.hero .med-info-row{color:var(--on-brand);opacity:.92}
+.badge{
+    display:inline-block;padding:.28rem .7rem;border-radius:var(--r-pill);
+    font-size:.75rem;font-weight:700;margin:.4rem .35rem 0 0;
+    border:1px solid transparent;
+}
+.badge-package-warning,.badge-rx-warning{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-border)}
+.badge-package-critical,.badge-rx-critical{background:var(--danger-bg);color:var(--danger);border-color:var(--danger-border)}
+.badge-neutral{background:var(--brand-soft);color:var(--brand-text);border-color:var(--border)}
+.badge-cart{background:#FFE8CC;color:#8A4B00;border-color:#F0C089}
+.med-card.hero .badge{background:rgba(255,255,255,.92);color:var(--brand-text);border-color:transparent}
+.med-buttons{margin-top:.9rem}
+
+/* ---------- Lomakkeet ---------- */
+.form-card{
+    background:var(--surface);border:var(--bw) solid var(--brand);
+    border-radius:var(--r-card);padding:var(--pad);margin-bottom:var(--gap);box-shadow:var(--sh-1);
+}
+.form-card h3{color:var(--brand-text);margin-bottom:.8rem;font-size:1.02rem}
+.form-error{color:var(--danger);font-size:.82rem;font-weight:700;margin-top:.6rem;min-height:1.1rem}
+.hint{font-size:.78rem;color:var(--text-faint);margin-top:.3rem}
+.quick-picks{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.4rem}
+.mode-toggle{display:flex;gap:.5rem;margin-bottom:.9rem}
+.mode-toggle button{
+    flex:1;padding:.6rem .4rem;border-radius:var(--r-btn);border:var(--bw) solid var(--border-strong);
+    background:var(--surface);color:var(--text-soft);font-size:.82rem;font-weight:700;
+}
+.mode-toggle button.active{background:var(--brand);color:var(--on-brand);border-color:var(--brand)}
+.pkg-form-card{
+    background:var(--surface);border:var(--bw) solid var(--border);border-radius:var(--r-card);
+    overflow:hidden;margin-bottom:var(--gap);box-shadow:var(--sh-1);
+}
+.pkg-form-header{background:var(--brand);color:var(--on-brand);padding:1.1rem 1.2rem}
+.pkg-form-header.rx{background:var(--warn-bg);color:var(--warn);border-bottom:var(--bw) solid var(--warn-border)}
+.pkg-form-tag{
+    display:inline-block;background:rgba(255,255,255,.25);padding:.2rem .6rem;
+    border-radius:var(--r-pill);font-size:.7rem;font-weight:800;margin-bottom:.4rem;
+}
+.pkg-form-header.rx .pkg-form-tag{background:rgba(0,0,0,.08)}
+.pkg-form-header h3{font-size:1.2rem;font-weight:800;overflow-wrap:break-word}
+.pkg-form-body{padding:var(--pad)}
+.pkg-form-row{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+
+/* ---------- Osiot ja tilat ---------- */
+.section-title{font-size:.8rem;color:var(--text-faint);letter-spacing:.04em;margin:1.3rem 0 .6rem;font-weight:800}
+.empty-state{
+    text-align:center;color:var(--text-faint);padding:2.2rem 1rem;
+    background:var(--surface);border:var(--bw) dashed var(--border-strong);border-radius:var(--r-card);
+}
+.info-banner{
+    background:var(--brand-soft);border:var(--bw) solid var(--border);color:var(--brand-text);
+    border-radius:var(--r-btn);padding:.85rem;margin-bottom:1rem;font-size:.82rem;font-weight:600;
+}
+
+/* ---------- Reseptilistaus ---------- */
+.rx-card{
+    background:var(--surface);border:var(--bw) solid var(--border);border-radius:var(--r-card);
+    padding:1.1rem 1.2rem;margin-bottom:var(--gap);box-shadow:var(--sh-1);
+}
+.rx-card.rx-warning{border-color:var(--warn-border);background:var(--warn-bg)}
+.rx-card.rx-critical{border-color:var(--danger-border);background:var(--danger-bg)}
+.rx-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem}
+.rx-card-top h3{font-size:1.12rem;color:var(--brand-text);flex:1 1 auto;min-width:0;overflow-wrap:break-word}
+.rx-days-chip{
+    flex-shrink:0;text-align:center;background:var(--brand);color:var(--on-brand);
+    border-radius:var(--r-btn);padding:.45rem .9rem;min-width:3.4rem;
+}
+.rx-days-chip .num{font-size:1.5rem;font-weight:800;line-height:1;display:block}
+.rx-days-chip .unit{font-size:.62rem;opacity:.9;letter-spacing:.04em}
+.rx-days-chip.warning{background:var(--warn);color:#fff}
+.rx-days-chip.critical{background:var(--danger);color:#fff}
+.rx-card-date{font-size:.9rem;color:var(--text-soft);font-weight:600;margin-top:.6rem}
+
+/* ---------- Asetukset ---------- */
+.set-group{
+    background:var(--surface);border:var(--bw) solid var(--border);border-radius:var(--r-card);
+    margin-bottom:var(--gap);overflow:hidden;box-shadow:var(--sh-1);
+}
+.set-head{
+    display:flex;align-items:center;gap:.6rem;width:100%;padding:1rem var(--pad);
+    font-size:1rem;font-weight:700;text-align:left;color:var(--text);
+}
+.set-head .arrow{margin-left:auto;color:var(--text-faint);font-size:.8rem;transition:transform .2s}
+.set-group.open .set-head .arrow{transform:rotate(90deg)}
+.set-body{padding:0 var(--pad) var(--pad);border-top:var(--bw) solid var(--border)}
+.set-row{display:flex;align-items:center;gap:.75rem;padding:.65rem 0;border-bottom:1px solid var(--border)}
+.set-row:last-child{border-bottom:none}
+.set-row .lbl{flex:1;font-size:.9rem}
+.set-row .lbl small{display:block;color:var(--text-faint);font-size:.74rem;font-weight:400;margin-top:.1rem}
+.switch{
+    flex-shrink:0;width:2.9rem;height:1.65rem;border-radius:var(--r-pill);background:var(--border-strong);
+    position:relative;transition:background .2s;border:var(--bw) solid transparent;
+}
+.switch.on{background:var(--brand)}
+.switch::after{
+    content:'';position:absolute;top:.17rem;left:.17rem;width:1.2rem;height:1.2rem;
+    border-radius:50%;background:#fff;transition:transform .2s;box-shadow:var(--sh-1);
+}
+.switch.on::after{transform:translateX(1.25rem)}
+.theme-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(5.4rem,1fr));gap:.5rem;margin:.5rem 0 .2rem}
+.theme-btn{
+    border:var(--bw) solid var(--border-strong);border-radius:var(--r-btn);padding:.5rem .3rem;
+    font-size:.76rem;font-weight:700;color:var(--text-soft);background:var(--surface);
+}
+.theme-btn.on{border-color:var(--brand);color:var(--brand-text);background:var(--brand-soft)}
+.theme-dot{display:block;width:100%;height:1.4rem;border-radius:6px;margin-bottom:.35rem}
+.preview{
+    border:var(--bw) dashed var(--border-strong);border-radius:var(--r-card);
+    padding:.7rem;margin:.6rem 0 .2rem;background:var(--surface-2);
+}
+.preview .plabel{font-size:.72rem;color:var(--text-faint);font-weight:700;margin-bottom:.4rem}
+input[type=range]{width:100%;accent-color:var(--brand);height:1.6rem}
+.hue-track{
+    height:.7rem;border-radius:var(--r-pill);margin-bottom:.2rem;
+    background:linear-gradient(90deg,hsl(0 70% 45%),hsl(60 70% 45%),hsl(120 70% 45%),hsl(180 70% 45%),hsl(240 70% 45%),hsl(300 70% 45%),hsl(360 70% 45%));
+}
+.scale-row{display:flex;gap:.4rem;margin-top:.4rem}
+.scale-row button{
+    flex:1;padding:.55rem .2rem;border-radius:var(--r-btn);border:var(--bw) solid var(--border-strong);
+    background:var(--surface);color:var(--text-soft);font-weight:700;
+}
+.scale-row button.on{background:var(--brand);color:var(--on-brand);border-color:var(--brand)}
+.scale-row button:nth-child(1){font-size:.75rem}
+.scale-row button:nth-child(2){font-size:.88rem}
+.scale-row button:nth-child(3){font-size:1rem}
+.scale-row button:nth-child(4){font-size:1.15rem}
+.import-preview{
+    background:var(--brand-soft);border:var(--bw) solid var(--brand);border-radius:var(--r-btn);
+    padding:.85rem;margin-top:.6rem;font-size:.85rem;
+}
+.import-preview ul{margin:.5rem 0 0 1.1rem}
+.import-preview li{margin:.15rem 0}
+.file-label{
+    display:block;text-align:center;padding:.82rem 1rem;border-radius:var(--r-btn);
+    border:var(--bw) dashed var(--border-strong);color:var(--text-soft);font-weight:600;
+    font-size:.9rem;margin-bottom:.55rem;cursor:pointer;
+}
+.file-label input{display:none}
+
+/* ---------- Alanavigaatio ---------- */
+.tabbar{
+    position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;
+    background:var(--surface);border-top:var(--bw) solid var(--border);
+    padding-bottom:env(safe-area-inset-bottom);box-shadow:var(--sh-2);
+}
+.tabbar button{
+    flex:1;display:flex;flex-direction:column;align-items:center;gap:.15rem;
+    padding:.6rem .2rem .55rem;font-size:.68rem;font-weight:700;color:var(--text-faint);
+}
+.tabbar button .ti{font-size:1.15rem;line-height:1}
+.tabbar button.on{color:var(--brand-text)}
+.tabbar button.on .ti{transform:translateY(-1px)}
+
+/* ---------- PIN-lukitus ---------- */
+.pin-wrap{max-width:17rem;margin:2.5rem auto 0;text-align:center}
+.pin-title{font-size:1.1rem;font-weight:800;color:var(--brand-text);margin-bottom:.3rem}
+.pin-sub{font-size:.84rem;color:var(--text-faint);margin-bottom:1.2rem}
+.pin-dots{display:flex;justify-content:center;gap:.8rem;margin-bottom:1.2rem}
+.pin-dot{
+    width:.95rem;height:.95rem;border-radius:50%;border:2px solid var(--border-strong);
+    transition:background .15s,border-color .15s;
+}
+.pin-dot.filled{background:var(--brand);border-color:var(--brand)}
+.pin-dot.err{border-color:var(--danger);background:var(--danger)}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem}
+.pin-pad button{
+    padding:.9rem 0;font-size:1.3rem;font-weight:700;border-radius:var(--r-btn);
+    background:var(--surface);border:var(--bw) solid var(--border-strong);
+}
+.pin-pad button:active{background:var(--brand-soft)}
+.pin-pad button.wide{font-size:.9rem;font-weight:700;color:var(--text-soft)}
+.pin-error{color:var(--danger);font-size:.85rem;font-weight:700;min-height:1.2rem;margin-top:.8rem}
+
+/* ---------- Päivitysilmoitus ---------- */
+.update-bar{
+    position:fixed;left:.75rem;right:.75rem;bottom:calc(4.4rem + env(safe-area-inset-bottom));
+    background:var(--brand);color:var(--on-brand);border-radius:var(--r-card);
+    padding:.85rem 1rem;display:none;align-items:center;gap:.75rem;z-index:55;box-shadow:var(--sh-2);
+}
+.update-bar.show{display:flex}
+.update-bar .u-text{flex:1;font-size:.85rem;font-weight:600;line-height:1.35}
+.update-bar button{
+    padding:.5rem .9rem;border-radius:var(--r-btn);background:var(--on-brand);
+    color:var(--brand);font-size:.82rem;font-weight:800;flex-shrink:0;
+}
+.update-bar .u-close{background:none;color:var(--on-brand);opacity:.8;padding:.5rem .3rem}
+
+.version-line{text-align:center;font-size:.72rem;color:var(--text-faint);margin:1.2rem 0 .4rem}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
 </head>
-<body>
+<body data-theme="meri" data-density="normal">
+
+<div id="saveStatus"></div>
 
 <!-- Kirjautumisruutu -->
 <div id="loginScreen">
     <div class="login-box">
         <div class="login-title">💊 Lääkevahti</div>
         <div class="login-sub">Kirjaudu sisään jatkaaksesi</div>
-
         <label for="emailInput">Sähköposti</label>
         <input type="email" id="emailInput" placeholder="sinun@email.fi" autocomplete="username">
-
         <label for="passwordInput">Salasana</label>
         <input type="password" id="passwordInput" placeholder="••••••••" autocomplete="current-password">
-
-        <button class="login-btn" id="loginBtn" onclick="handleLogin()">Kirjaudu sisään</button>
+        <button class="btn btn-primary" id="loginBtn" style="margin-top:1rem">Kirjaudu sisään</button>
         <div class="login-error" id="loginError"></div>
     </div>
 </div>
 
-<div id="saveStatus"></div>
-
 <div class="container">
     <h1>💊 Lääkevahti</h1>
-    <div class="user-bar" id="userBar" style="display:none;">
+    <div class="user-bar" id="userBar" style="display:none">
         <span id="userEmail"></span>
-        <button class="logout-btn" onclick="handleLogout()">🚪 Kirjaudu ulos</button>
+        <button class="logout-btn" id="logoutBtn">🚪 Kirjaudu ulos</button>
     </div>
-    <div id="app"><p style="text-align:center;color:#999;">Ladataan...</p></div>
+    <div id="app"><p style="text-align:center;color:var(--text-faint)">Ladataan...</p></div>
 </div>
+
+<!-- Päivitysilmoitus -->
+<div class="update-bar" id="updateBar">
+    <div class="u-text">Uusi versio on ladattu valmiiksi.</div>
+    <button id="updateNow">Päivitä</button>
+    <button class="u-close" id="updateLater">✕</button>
+</div>
+
+<!-- Alanavigaatio -->
+<nav class="tabbar" id="tabbar" style="display:none">
+    <button data-tab="dashboard" class="on"><span class="ti">🏠</span>Koti</button>
+    <button data-tab="prescriptions"><span class="ti">📋</span>Reseptit</button>
+    <button data-tab="settings"><span class="ti">⚙️</span>Asetukset</button>
+</nav>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -170,11 +473,17 @@ import {
     collection, getDocs, arrayUnion
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import {
-    getAuth,
-    signInWithEmailAndPassword,
-    signOut,
-    onAuthStateChanged
+    getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+// ============================================================
+//  VERSIO
+//  Tämä on ainoa paikka jota pitää nostaa julkaisussa. Service
+//  worker rekisteröidään osoitteella sw.js?v=APP_VERSION, joten
+//  numeron muuttaminen pakottaa selaimen hakemaan uuden workerin
+//  eikä välimuistiin voi jäädä vanhaa versiota roikkumaan.
+// ============================================================
+const APP_VERSION = '2026.09.11';
 
 const firebaseConfig = {
     apiKey: "AIzaSyDswdEF9J0gsHJH6Zo_8BGZrf8DVG3FwYc",
@@ -190,6 +499,265 @@ const db       = getFirestore(app);
 const auth     = getAuth(app);
 const DATA_DOC = doc(db, "astmalaake", "data");
 
+// Asetusnäkymän PIN. Tämä on kevyt suoja omalle puhelimelle, ei
+// tietoturvalukko: koodi on luettavissa sivun lähdekoodista.
+const SETTINGS_PIN = '3661';
+
+// ============================================================
+//  ASETUKSET
+//  Vanhoissa tallennuksissa settings sisältää vain neljä
+//  hälytysrajaa. Siksi uudet kentät yhdistetään aina oletuksiin,
+//  jolloin vanha data avautuu sellaisenaan eikä mitään katoa.
+// ============================================================
+const DEFAULT_SETTINGS = {
+    packageWarningDays: 10,
+    packageCriticalDays: 3,
+    rxWarningDays: 30,
+    rxCriticalDays: 7,
+    theme: 'meri',
+    accentHue: 194,
+    textScale: 1,
+    density: 'normal',
+    cardFields: { pkgInfo:true, startDate:true, endDate:true, rx:true, badges:true, cart:true },
+    defaults: { packageSize:'', dosePerDay:'', rxYears:2 }
+};
+
+// Teemojen korostusvärit on kuvattu myös täällä, koska kontrastin
+// laskenta tarvitsee todelliset luvut. Arvot vastaavat tyylitiedoston
+// hsl()-määrityksiä – jos muutat toista, muuta myös toinen.
+const THEMES = {
+    meri:      { name:'Meri',      hue:194, dark:false, bs:78, bl:30 },
+    metsa:     { name:'Metsä',     hue:152, dark:false, bs:78, bl:30 },
+    hiekka:    { name:'Hiekka',    hue:32,  dark:false, bs:78, bl:30 },
+    yo:        { name:'Yö',        hue:194, dark:true,  bs:62, bl:42 },
+    kontrasti: { name:'Kontrasti', hue:210, dark:true,  bs:85, bl:42 }
+};
+const TEXT_SCALES = [
+    { v:0.9,  label:'Pieni' },
+    { v:1,    label:'Normaali' },
+    { v:1.12, label:'Suuri' },
+    { v:1.28, label:'Erittäin suuri' }
+];
+
+function cloneSettings(s){
+    return {
+        ...DEFAULT_SETTINGS,
+        ...s,
+        cardFields: { ...DEFAULT_SETTINGS.cardFields, ...((s && s.cardFields) || {}) },
+        defaults:   { ...DEFAULT_SETTINGS.defaults,   ...((s && s.defaults)   || {}) }
+    };
+}
+
+// ============================================================
+//  TILA
+// ============================================================
+let data = { medicines: {}, settings: cloneSettings(null) };
+let settings = data.settings;
+let legacyDataDetected = false;
+let isSaving = false;
+let savePending = false;
+let unsubSnapshot = null;
+let settingsUnlocked = false;   // PIN kysytään kerran istunnossa
+let pendingImport = null;       // tuotavat tiedot odottamassa vahvistusta
+
+let ui = {
+    view:'dashboard', addFormOpen:false, addFormMode:'daily',
+    editId:null, editFormMode:null, newPackageId:null, newRxId:null,
+    settingsSection:'ulkoasu', pinInput:'', pinError:''
+};
+
+// ============================================================
+//  VÄRILASKENTA
+//  Korostusvärin päällä oleva teksti valitaan automaattisesti:
+//  lasketaan taustan suhteellinen luminanssi ja verrataan valkoisen
+//  ja tumman musteen kontrastia. Näin liukusäätimen ääriasennotkin
+//  pysyvät luettavina ilman käsin valittuja poikkeuksia.
+// ============================================================
+function hslToRgb(h, s, l){
+    h = ((h % 360) + 360) % 360; s /= 100; l /= 100;
+    const c = (1 - Math.abs(2*l - 1)) * s;
+    const x = c * (1 - Math.abs((h/60) % 2 - 1));
+    const m = l - c/2;
+    let r=0, g=0, b=0;
+    if(h < 60){ r=c; g=x; }
+    else if(h < 120){ r=x; g=c; }
+    else if(h < 180){ g=c; b=x; }
+    else if(h < 240){ g=x; b=c; }
+    else if(h < 300){ r=x; b=c; }
+    else { r=c; b=x; }
+    return [Math.round((r+m)*255), Math.round((g+m)*255), Math.round((b+m)*255)];
+}
+function relativeLuminance([r,g,b]){
+    const f = v => { v /= 255; return v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4); };
+    return 0.2126*f(r) + 0.7152*f(g) + 0.0722*f(b);
+}
+function contrastRatio(l1, l2){
+    const a = Math.max(l1, l2), b = Math.min(l1, l2);
+    return (a + 0.05) / (b + 0.05);
+}
+const INK_DARK = [14,26,34];
+function readableInkFor(rgb){
+    const lum   = relativeLuminance(rgb);
+    const white = contrastRatio(lum, 1);
+    const dark  = contrastRatio(lum, relativeLuminance(INK_DARK));
+    return white >= dark ? '#FFFFFF' : '#0E1A22';
+}
+function bestContrast(rgb){
+    const lum = relativeLuminance(rgb);
+    return Math.max(contrastRatio(lum, 1), contrastRatio(lum, relativeLuminance(INK_DARK)));
+}
+// Osa sävyistä (esim. keltavihreä) on keskikirkkaita: niiden päällä
+// ei valkoinen eikä tumma teksti yllä riittävään kontrastiin. Siksi
+// väriä siirretään vaaleus kerrallaan siihen suuntaan, jonne teksti
+// jo kallistuu, kunnes 4.5:1 täyttyy. Sävy säilyy, vain kirkkaus muuttuu.
+function readableBrand(h, s, l){
+    let lightness = l;
+    let rgb = hslToRgb(h, s, lightness);
+    let guard = 0;
+    while(bestContrast(rgb) < 4.5 && guard++ < 60){
+        lightness += (readableInkFor(rgb) === '#FFFFFF') ? -1.5 : 1.5;
+        if(lightness < 0 || lightness > 100) break;
+        rgb = hslToRgb(h, s, lightness);
+    }
+    return { rgb, ink: readableInkFor(rgb) };
+}
+function rgbToHex([r,g,b]){
+    return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+}
+
+// ============================================================
+//  TEEMAN KÄYTTÖÖNOTTO
+//  Tämä koskee vain CSS-muuttujia, joten sitä voi kutsua myös
+//  kesken liukusäätimen vetämisen ilman että näkymä piirtyy
+//  uudelleen ja säädin hyppää takaisin alkuun.
+// ============================================================
+function applyTheme(){
+    const th = THEMES[settings.theme] || THEMES.meri;
+    const hue = Number.isFinite(+settings.accentHue) ? +settings.accentHue : th.hue;
+
+    document.body.dataset.theme   = settings.theme in THEMES ? settings.theme : 'meri';
+    document.body.dataset.density = settings.density === 'tiivis' ? 'tiivis' : 'normal';
+
+    // --h ja --fs elävät html-elementissä, koska html:n oma
+    // fonttikoko lasketaan niistä.
+    const root = document.documentElement;
+    root.style.setProperty('--h', hue);
+    root.style.setProperty('--fs', settings.textScale || 1);
+
+    // Korostusvärit kirjoitetaan bodyyn valmiiksi laskettuina, jotta
+    // ne voittavat teemasäännöt ja kontrasti on aina varmistettu.
+    const brand  = readableBrand(hue, th.bs, th.bl);
+    const brand2 = readableBrand(hue - 17, th.bs - 2, th.bl + 13);
+    const b = document.body.style;
+    b.setProperty('--brand', rgbToHex(brand.rgb));
+    b.setProperty('--brand-2', rgbToHex(brand2.rgb));
+    b.setProperty('--on-brand', brand.ink);
+    b.setProperty('--on-brand-2', brand2.ink);
+
+    const meta = document.getElementById('themeColorMeta');
+    if(meta) meta.setAttribute('content', rgbToHex(brand.rgb));
+}
+
+// ============================================================
+//  TALLENNUS / LATAUS
+// ============================================================
+function showSaveStatus(msg, color){
+    const el = document.getElementById('saveStatus');
+    el.textContent = msg;
+    el.style.background = color || 'var(--brand)';
+    el.style.opacity = '1';
+    clearTimeout(showSaveStatus._t);
+    showSaveStatus._t = setTimeout(() => el.style.opacity = '0', 2000);
+}
+
+// Jos tallennus on jo käynnissä, muutosta ei enää hylätä hiljaa vaan
+// se jää jonoon ja kirjoitetaan heti edellisen valmistuttua.
+async function saveData(){
+    if(isSaving){ savePending = true; return; }
+    isSaving = true;
+    showSaveStatus('💾 Tallennetaan...', '#f97316');
+    try {
+        localStorage.setItem('laakevahti_bkp', JSON.stringify(data));
+        await setDoc(DATA_DOC, { json: JSON.stringify(data) });
+        showSaveStatus('✅ Tallennettu', '#22c55e');
+    } catch(e){
+        showSaveStatus('❌ Tallennus epäonnistui', '#dc2626');
+        console.error(e);
+    }
+    isSaving = false;
+    if(savePending){ savePending = false; await saveData(); }
+}
+
+// Teeman säätäminen tuottaisi kymmeniä kirjoituksia sekunnissa,
+// joten asetusmuutokset kirjoitetaan pienellä viiveellä.
+let settingsSaveTimer = null;
+function saveSettingsSoon(){
+    clearTimeout(settingsSaveTimer);
+    settingsSaveTimer = setTimeout(() => { settingsSaveTimer = null; saveData(); }, 700);
+}
+// Jos sovellus suljetaan heti säädön jälkeen, odottava tallennus
+// kirjoitetaan ennen taustalle siirtymistä.
+document.addEventListener('visibilitychange', () => {
+    if(document.hidden && settingsSaveTimer){
+        clearTimeout(settingsSaveTimer);
+        settingsSaveTimer = null;
+        saveData();
+    }
+});
+
+function normalizeLoadedData(parsed){
+    if(parsed && parsed.medicines && typeof parsed.medicines === 'object'){
+        Object.values(parsed.medicines).forEach(m => {
+            if(!m.mode) m.mode = 'daily';
+            if(typeof m.prescriptionTotalPackages === 'undefined') m.prescriptionTotalPackages = null;
+            if(typeof m.prescriptionPackagesUsed === 'undefined') m.prescriptionPackagesUsed = 0;
+        });
+        parsed.settings = cloneSettings(parsed.settings);
+        settings = parsed.settings;
+        applyTheme();
+        return parsed;
+    }
+    legacyDataDetected = true;
+    const fresh = { medicines: {}, settings: cloneSettings(null) };
+    settings = fresh.settings;
+    applyTheme();
+    return fresh;
+}
+
+async function loadFromFirebase(){
+    try {
+        const snap = await getDoc(DATA_DOC);
+        if(snap.exists()){
+            data = normalizeLoadedData(JSON.parse(snap.data().json));
+        } else {
+            const bkp = localStorage.getItem('laakevahti_bkp');
+            if(bkp){
+                try { data = normalizeLoadedData(JSON.parse(bkp)); await saveData(); }
+                catch(e){ data = normalizeLoadedData(null); }
+            }
+        }
+    } catch(e){
+        const bkp = localStorage.getItem('laakevahti_bkp');
+        if(bkp) try { data = normalizeLoadedData(JSON.parse(bkp)); } catch(e2){}
+        showSaveStatus('⚠️ Yhteysvirhe – paikallinen data', '#f59e0b');
+    }
+    render();
+    if(unsubSnapshot) unsubSnapshot();
+    unsubSnapshot = onSnapshot(DATA_DOC, snap => {
+        if(!snap.exists() || isSaving) return;
+        try {
+            data = normalizeLoadedData(JSON.parse(snap.data().json));
+            // Avointa lomaketta tai asetussivua ei piirretä uusiksi,
+            // jottei kesken oleva syöttö katoa toisen laitteen tallennuksesta.
+            if(!formIsOpen() && ui.view !== 'settings') render();
+        } catch(e){}
+    });
+}
+
+function formIsOpen(){
+    return !!(ui.addFormOpen || ui.editId || ui.newPackageId || ui.newRxId);
+}
+
 // ============================================================
 //  KAUPPALISTA-INTEGRAATIO
 //  Kauppalista-sovellus käyttää SAMAA Firebase-projektia, joten tästä
@@ -197,30 +765,22 @@ const DATA_DOC = doc(db, "astmalaake", "data");
 //  ei tarvitse koskea: se kuuntelee koko lists-kokoelmaa onSnapshotilla,
 //  joten lisätty tuote ilmestyy sen ruudulle itsestään.
 //
-//  Kohde on kiinteä: profiili ISKÄ, lista APTEEKKI. Kauppalistan avoin
-//  lista ja valittu profiili elävät vain sen oman puhelimen
-//  localStoragessa, joten niitä ei voi täältä tietää.
-//
 //  'ISKÄ' kirjoitetaan \u00C4-pakosarjalla, koska se on Firestore-
 //  dokumentin TUNNISTE. Jos tiedosto joskus tallentuu väärällä
-//  merkistöllä tai hajotetulla ä:llä (A + tarke), tunniste ei enää
-//  täsmäisi kauppalistan omaan ja tuotteet valuisivat väärään paikkaan.
+//  merkistöllä, tunniste ei enää täsmäisi ja tuotteet valuisivat
+//  väärään paikkaan.
 // ============================================================
-const KAUPPA_KAYTTAJA = 'ISK\u00C4';
-const KAUPPA_LISTA    = 'APTEEKKI';
-const KAUPPA_KATEGORIA = 'apteekki';   // Kauppalistan peruskategoria 💊
+const KAUPPA_KAYTTAJA  = 'ISK\u00C4';
+const KAUPPA_LISTA     = 'APTEEKKI';
+const KAUPPA_KATEGORIA = 'apteekki';
 
 const kauppaCol = () => collection(db, 'kauppalista', KAUPPA_KAYTTAJA, 'lists');
 const kauppaRef = (id) => doc(db, 'kauppalista', KAUPPA_KAYTTAJA, 'lists', id);
-// Kauppalistan oma rid(): 9 merkkiä base36:na. Pidetään sama muoto,
-// jottei sen listoille synny kahdenlaisia tunnisteita.
 const kauppaId  = () => Math.random().toString(36).slice(2, 11);
 
-// APTEEKKI-listan sisältö reaaliajassa, jotta kortissa voi näkyä
-// "jo listalla" eikä samaa lääkettä lisätä kahdesti eri puhelimista.
-let kauppaLista = null;          // { id, items } tai null jos listaa ei vielä ole
+let kauppaLista = null;
 let kauppaUnsub = null;
-let kauppaLisays = null;         // käynnissä olevan lisäyksen lääke-id
+let kauppaLisays = null;
 
 function tilaaKauppalista(){
     if(kauppaUnsub) return;
@@ -233,12 +793,8 @@ function tilaaKauppalista(){
             }
         });
         kauppaLista = loydetty;
-        // Avointa lomaketta ei piirretä uusiksi: kentissä olevat
-        // kirjoitukset katoaisivat kesken täytön.
-        if(!ui.addFormOpen && !ui.editId && !ui.newPackageId && !ui.newRxId) render();
+        if(!formIsOpen() && ui.view === 'dashboard') render();
     }, err => {
-        // Kauppalista on lisäominaisuus – sen kaatuminen ei saa estää
-        // lääkkeiden seurantaa, joten virhe vain kirjataan.
         console.warn('Kauppalistan kuuntelu epäonnistui', err);
     });
 }
@@ -248,16 +804,8 @@ function lopetaKauppalista(){
     kauppaLista = null;
 }
 
-// Kauppalista tallentaa tuotteiden nimet isoilla kirjaimilla (addNamed
-// tekee toUpperCase). Sama muoto myös täältä, muuten vertailu ei osu
-// eikä lista näytä yhtenäiseltä.
 const kauppaNimi = (s) => String(s || '').trim().toUpperCase();
 
-// Tässä sovelluksessa ei ole Firestoren pysyvää offline-varastoa, joten
-// kirjoituksen lupaus ratkeaa vasta kun palvelin kuittaa sen. Ilman
-// verkkoa se jäisi roikkumaan ja nappi näyttäisi jumittuneelta.
-// Kirjoitus jää silti jonoon ja menee läpi kun verkko palaa – vain
-// odottaminen lopetetaan.
 const KAUPPA_ODOTUS_MS = 4000;
 function odotaKirjoitusta(lupaus){
     let ajastin;
@@ -294,8 +842,6 @@ window.lisaaKauppalistaan = async (medId) => {
     const tuote = { id: kauppaId(), name: nimi, qty: '1', done: false, cat: KAUPPA_KATEGORIA };
 
     try {
-        // Kuuntelija ei ole välttämättä ehtinyt kertoa listasta vielä,
-        // joten haetaan varmuuden vuoksi suoraan.
         let kohde = kauppaLista;
         let maxOrder = -1;
         if(!kohde){
@@ -307,7 +853,6 @@ window.lisaaKauppalistaan = async (medId) => {
                     kohde = { id: d.id, items: Array.isArray(l.items) ? l.items : [] };
                 }
             });
-            // Haku saattoi paljastaa että tuote lisättiin juuri toisaalta
             if(kohde && (kohde.items || []).some(i => !i.done && kauppaNimi(i.name) === nimi)){
                 showSaveStatus('🛒 ' + nimi + ' on jo listalla', '#f97316');
                 return;
@@ -316,16 +861,11 @@ window.lisaaKauppalistaan = async (medId) => {
 
         let kirjoitus;
         if(kohde){
-            // arrayUnion koskee vain yhtä alkiota. Jos koko items-taulukko
-            // kirjoitettaisiin uusiksi, samaan aikaan kaupassa tehty
-            // rastitus jäisi tämän kirjoituksen alle.
             kirjoitus = updateDoc(kauppaRef(kohde.id), {
                 items: arrayUnion(tuote),
                 updatedAt: Date.now()
             });
         } else {
-            // Listaa ei ole vielä olemassa – luodaan se. Kenttien nimet
-            // ovat samat kuin kauppalistan omassa saveList-funktiossa.
             kirjoitus = setDoc(kauppaRef(kauppaId()), {
                 name: KAUPPA_LISTA,
                 order: maxOrder + 1,
@@ -333,9 +873,6 @@ window.lisaaKauppalistaan = async (medId) => {
                 updatedAt: Date.now()
             });
         }
-        // Virhe käsitellään alla catchissa, mutta lupaus on merkittävä
-        // käsitellyksi jo tässä: aikakatkaisun jälkeen catch ei enää ole
-        // kuuntelemassa, ja selain valittaisi käsittelemättömästä virheestä.
         kirjoitus.catch(e => console.error('Kauppalistaan lisäys epäonnistui', e));
 
         const tulos = await odotaKirjoitusta(kirjoitus);
@@ -353,176 +890,40 @@ window.lisaaKauppalistaan = async (medId) => {
     }
 };
 
-// ============================
-// ASETUKSET (hälytysrajat) — muokattavissa Asetukset-näkymästä, oletukset alla
-// ============================
-const DEFAULT_THRESHOLDS = {
-    packageWarningDays: 10,  // pakkaus "loppumassa" -varoitus
-    packageCriticalDays: 3,  // pakkaus "loppuu heti" -varoitus
-    rxWarningDays: 30,       // resepti "vanhenemassa" -varoitus
-    rxCriticalDays: 7        // resepti "vanhenee heti" -varoitus
-};
-let thresholds = { ...DEFAULT_THRESHOLDS };
-
-// ============================
-// TILA
-// ============================
-let data = { medicines: {}, settings: { ...DEFAULT_THRESHOLDS } };
-let legacyDataDetected = false;
-let isSaving = false;
-let unsubSnapshot = null;
-
-// UI-tila (ei tallenneta Firebaseen)
-let ui = { view:'dashboard', addFormOpen:false, addFormMode:'daily', editId:null, editFormMode:null, newPackageId:null, newRxId:null };
-
-// ============================
-// AUTH STATE
-// ============================
-onAuthStateChanged(auth, user => {
-    if(user){
-        document.getElementById('loginScreen').style.display = 'none';
-        document.getElementById('userBar').style.display = 'flex';
-        document.getElementById('userEmail').textContent = user.email;
-        loadFromFirebase();
-        tilaaKauppalista();
-    } else {
-        document.getElementById('loginScreen').style.display = 'flex';
-        document.getElementById('userBar').style.display = 'none';
-        document.getElementById('app').innerHTML = '<p style="text-align:center;color:#999;">Ladataan...</p>';
-        if(unsubSnapshot){ unsubSnapshot(); unsubSnapshot = null; }
-        lopetaKauppalista();
-    }
-});
-
-// ============================
-// KIRJAUTUMINEN
-// ============================
-window.handleLogin = async () => {
-    const email    = document.getElementById('emailInput').value.trim();
-    const password = document.getElementById('passwordInput').value;
-    const btn      = document.getElementById('loginBtn');
-    const err      = document.getElementById('loginError');
-
-    if(!email || !password){ err.textContent = "Syötä sähköposti ja salasana."; return; }
-
-    btn.disabled = true;
-    btn.textContent = "Kirjaudutaan...";
-    err.textContent = "";
-
-    try {
-        await signInWithEmailAndPassword(auth, email, password);
-    } catch(e){
-        btn.disabled = false;
-        btn.textContent = "Kirjaudu sisään";
-        if(e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found'){
-            err.textContent = "Väärä sähköposti tai salasana.";
-        } else if(e.code === 'auth/too-many-requests'){
-            err.textContent = "Liian monta yritystä. Yritä myöhemmin.";
-        } else {
-            err.textContent = "Kirjautuminen epäonnistui. (" + e.code + ")";
-        }
-    }
-};
-
-document.getElementById('passwordInput').addEventListener('keydown', e => { if(e.key==='Enter') window.handleLogin(); });
-document.getElementById('emailInput').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('passwordInput').focus(); });
-
-// ============================
-// ULOSKIRJAUTUMINEN
-// ============================
-window.handleLogout = async () => {
-    if(confirm('Haluatko kirjautua ulos?')) await signOut(auth);
-};
-
-// ============================
-// TALLENNUSINDIKAATTORI
-// ============================
-function showSaveStatus(msg, color){
-    const el = document.getElementById('saveStatus');
-    el.textContent = msg;
-    el.style.background = color || '#0B6E8C';
-    el.style.color = 'white';
-    el.style.opacity = '1';
-    setTimeout(() => el.style.opacity = '0', 2000);
+// ============================================================
+//  APUFUNKTIOT
+// ============================================================
+// Lääkkeen nimi tulee käyttäjältä ja se sijoitetaan HTML:ään.
+// Ilman siistimistä esimerkiksi lainausmerkki nimessä rikkoisi
+// lomakkeen kentän arvon ja kulmasulku koko kortin.
+function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
 }
 
-// ============================
-// FIREBASE TALLENNUS / LATAUS
-// ============================
-async function saveData(){
-    if(isSaving) return;
-    isSaving = true;
-    showSaveStatus('💾 Tallennetaan...', '#f97316');
-    try {
-        localStorage.setItem('laakevahti_bkp', JSON.stringify(data));
-        await setDoc(DATA_DOC, { json: JSON.stringify(data) });
-        showSaveStatus('✅ Tallennettu', '#22c55e');
-    } catch(e){
-        showSaveStatus('❌ Tallennus epäonnistui', '#dc2626');
-        console.error(e);
-    }
-    isSaving = false;
-}
-
-function normalizeLoadedData(parsed){
-    if(parsed && parsed.medicines && typeof parsed.medicines === 'object'){
-        // varmista että jokaisella lääkkeellä on kaikki uudet kentät (taaksepäin yhteensopivuus)
-        Object.values(parsed.medicines).forEach(m => {
-            if(!m.mode) m.mode = 'daily';
-            if(typeof m.prescriptionTotalPackages === 'undefined') m.prescriptionTotalPackages = null;
-            if(typeof m.prescriptionPackagesUsed === 'undefined') m.prescriptionPackagesUsed = 0;
-        });
-        parsed.settings = { ...DEFAULT_THRESHOLDS, ...(parsed.settings || {}) };
-        thresholds = parsed.settings;
-        return parsed;
-    }
-    // Vanha tietomalli (yksi lääke: startDate/doses) - ei voida automaattisesti muuntaa,
-    // koska pakkauskoko/annostus eivät olleet aiemmin tiedossa.
-    legacyDataDetected = true;
-    thresholds = { ...DEFAULT_THRESHOLDS };
-    return { medicines: {}, settings: { ...DEFAULT_THRESHOLDS } };
-}
-
-async function loadFromFirebase(){
-    try {
-        const snap = await getDoc(DATA_DOC);
-        if(snap.exists()){
-            data = normalizeLoadedData(JSON.parse(snap.data().json));
-        } else {
-            const bkp = localStorage.getItem('laakevahti_bkp');
-            if(bkp){
-                try { data = normalizeLoadedData(JSON.parse(bkp)); await saveData(); }
-                catch(e){ data = { medicines:{} }; }
-            }
-        }
-    } catch(e){
-        const bkp = localStorage.getItem('laakevahti_bkp');
-        if(bkp) try { data = normalizeLoadedData(JSON.parse(bkp)); } catch(e2){}
-        showSaveStatus('⚠️ Yhteysvirhe – paikallinen data', '#f59e0b');
-    }
-    render();
-    if(unsubSnapshot) unsubSnapshot();
-    unsubSnapshot = onSnapshot(DATA_DOC, snap => {
-        if(!snap.exists() || isSaving) return;
-        try { data = normalizeLoadedData(JSON.parse(snap.data().json)); render(); } catch(e){}
-    });
-}
-
-// ============================
-// APUFUNKTIOT (päivämäärät)
-// ============================
 function uid(){ return 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
-function getTodayString(){ return new Date().toISOString().split('T')[0]; }
+function getTodayString(){
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
 function formatDate(dateStr){ if(!dateStr) return '-'; return new Date(dateStr+'T12:00:00').toLocaleDateString('fi-FI'); }
-function addDaysToDate(dateStr, days){ const d=new Date(dateStr+'T12:00:00'); d.setDate(d.getDate()+days); return d.toISOString().split('T')[0]; }
+function addDaysToDate(dateStr, days){
+    const d = new Date(dateStr+'T12:00:00');
+    d.setDate(d.getDate()+days);
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function addYearsToDate(dateStr, years){
+    const d = new Date(dateStr+'T12:00:00');
+    d.setFullYear(d.getFullYear()+years);
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
 function daysFromToday(dateStr){
     const end = new Date(dateStr+'T12:00:00');
     const today = new Date(); today.setHours(12,0,0,0);
     return Math.ceil((end-today)/(1000*60*60*24));
 }
 
-// Pakkauksen loppumispäivä = aloituspäivä + floor(pakkauskoko / annos per päivä) päivää
-// Palauttaa null jos pakkaustietoja (pillerimäärä/annos/aloituspäivä) ei ole asetettu
 function getPackageEndDate(m){
     if(!m.packageSize || !m.dosePerDay || !m.startDate) return null;
     const totalDays = Math.floor(m.packageSize / m.dosePerDay);
@@ -539,10 +940,88 @@ function getPrescriptionPackagesRemaining(m){
     return Math.max(0, m.prescriptionTotalPackages - used);
 }
 
-// ============================
-// LÄÄKKEEN LISÄYS
-// ============================
-window.showAddMedicineForm = () => { ui.addFormOpen = true; ui.addFormMode = 'daily'; ui.editId = null; ui.newPackageId = null; ui.newRxId = null; render(); };
+// Reseptin pikavalinnat: asettaa päivämääräkenttään tämän päivän
+// plus valitun vuosimäärän.
+window.setRxQuick = (inputId, years) => {
+    const el = document.getElementById(inputId);
+    if(el) el.value = addYearsToDate(getTodayString(), years);
+};
+function rxQuickPicks(inputId){
+    // Oletuspituus korostetaan, jotta tavallisin valinta erottuu.
+    const def = (settings.defaults && settings.defaults.rxYears) || 2;
+    return `<div class="quick-picks">
+        <button type="button" class="btn-ghost ${def===1?'on':''}" onclick="setRxQuick('${inputId}',1)">+ 1 vuosi</button>
+        <button type="button" class="btn-ghost ${def===2?'on':''}" onclick="setRxQuick('${inputId}',2)">+ 2 vuotta</button>
+    </div>`;
+}
+
+// ============================================================
+//  KIRJAUTUMINEN
+// ============================================================
+onAuthStateChanged(auth, user => {
+    if(user){
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('userBar').style.display = 'flex';
+        document.getElementById('tabbar').style.display = 'flex';
+        document.getElementById('userEmail').textContent = user.email;
+        loadFromFirebase();
+        tilaaKauppalista();
+    } else {
+        document.getElementById('loginScreen').style.display = 'flex';
+        document.getElementById('userBar').style.display = 'none';
+        document.getElementById('tabbar').style.display = 'none';
+        document.getElementById('app').innerHTML = '<p style="text-align:center;color:var(--text-faint)">Ladataan...</p>';
+        if(unsubSnapshot){ unsubSnapshot(); unsubSnapshot = null; }
+        lopetaKauppalista();
+        settingsUnlocked = false;
+        ui.view = 'dashboard';
+    }
+});
+
+async function handleLogin(){
+    const email    = document.getElementById('emailInput').value.trim();
+    const password = document.getElementById('passwordInput').value;
+    const btn      = document.getElementById('loginBtn');
+    const err      = document.getElementById('loginError');
+
+    if(!email || !password){ err.textContent = "Syötä sähköposti ja salasana."; return; }
+
+    btn.disabled = true;
+    btn.textContent = "Kirjaudutaan...";
+    err.textContent = "";
+
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        btn.disabled = false;
+        btn.textContent = "Kirjaudu sisään";
+    } catch(e){
+        btn.disabled = false;
+        btn.textContent = "Kirjaudu sisään";
+        if(e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found'){
+            err.textContent = "Väärä sähköposti tai salasana.";
+        } else if(e.code === 'auth/too-many-requests'){
+            err.textContent = "Liian monta yritystä. Yritä myöhemmin.";
+        } else {
+            err.textContent = "Kirjautuminen epäonnistui. (" + e.code + ")";
+        }
+    }
+}
+
+document.getElementById('loginBtn').addEventListener('click', handleLogin);
+document.getElementById('passwordInput').addEventListener('keydown', e => { if(e.key==='Enter') handleLogin(); });
+document.getElementById('emailInput').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('passwordInput').focus(); });
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+    if(confirm('Haluatko kirjautua ulos?')) await signOut(auth);
+});
+
+// ============================================================
+//  LÄÄKKEEN LISÄYS
+// ============================================================
+window.showAddMedicineForm = () => {
+    ui.addFormOpen = true; ui.addFormMode = 'daily';
+    ui.editId = null; ui.newPackageId = null; ui.newRxId = null;
+    render();
+};
 window.cancelAddMedicine = () => { ui.addFormOpen = false; render(); };
 window.setAddFormMode = (mode) => { ui.addFormMode = mode; render(); };
 
@@ -579,16 +1058,20 @@ window.saveNewMedicine = async () => {
         med.packageSize = null; med.dosePerDay = null; med.startDate = null;
     }
 
-    const id = uid();
-    data.medicines[id] = med;
+    data.medicines[uid()] = med;
     ui.addFormOpen = false;
     await saveData(); render();
 };
 
-// ============================
-// LÄÄKKEEN MUOKKAUS
-// ============================
-window.openEditMedicine = (id) => { ui.editId = id; ui.editFormMode = (data.medicines[id] && data.medicines[id].mode) || 'daily'; ui.addFormOpen = false; ui.newPackageId = null; ui.newRxId = null; render(); };
+// ============================================================
+//  LÄÄKKEEN MUOKKAUS
+// ============================================================
+window.openEditMedicine = (id) => {
+    ui.editId = id;
+    ui.editFormMode = (data.medicines[id] && data.medicines[id].mode) || 'daily';
+    ui.addFormOpen = false; ui.newPackageId = null; ui.newRxId = null;
+    render();
+};
 window.cancelEditMedicine = () => { ui.editId = null; ui.editFormMode = null; render(); };
 window.setEditFormMode = (mode) => { ui.editFormMode = mode; render(); };
 
@@ -633,9 +1116,9 @@ window.deleteMedicine = async (id) => {
     await saveData(); render();
 };
 
-// ============================
-// UUSI PAKKAUS (päivittäin käytettävät) — sama resepti, laskuri kasvaa +1
-// ============================
+// ============================================================
+//  UUSI PAKKAUS
+// ============================================================
 window.openNewPackage = (id) => { ui.newPackageId = id; ui.addFormOpen = false; ui.editId = null; ui.newRxId = null; render(); };
 window.cancelNewPackage = () => { ui.newPackageId = null; render(); };
 
@@ -650,7 +1133,6 @@ window.saveNewPackage = async (id) => {
     if(!dose || dose <= 0){ err.textContent = 'Anna annos päivässä (yli 0).'; return; }
 
     if(m.prescriptionValidUntil){
-        // Sama resepti jatkuu -> pakkauslaskuri kasvaa automaattisesti
         m.prescriptionPackagesUsed = (m.prescriptionPackagesUsed || 0) + 1;
     }
 
@@ -660,9 +1142,9 @@ window.saveNewPackage = async (id) => {
     await saveData(); render();
 };
 
-// ============================
-// UUSI RESEPTI — päivittää resepti- ja pakkausmäärätiedot, nollaa laskurin
-// ============================
+// ============================================================
+//  UUSI RESEPTI
+// ============================================================
 window.openNewPrescription = (id) => { ui.newRxId = id; ui.addFormOpen = false; ui.editId = null; ui.newPackageId = null; render(); };
 window.cancelNewPrescription = () => { ui.newRxId = null; render(); };
 
@@ -682,9 +1164,6 @@ window.saveNewPrescription = async (id) => {
     await saveData(); render();
 };
 
-// ============================
-// TARVITTAESSA KÄYTETTÄVÄT: PAKKAUKSEN OSTON MERKINTÄ
-// ============================
 window.logAsNeededPackage = async (id) => {
     const m = data.medicines[id]; if(!m) return;
     if(!confirm('Merkitäänkö uusi pakkaus ostetuksi lääkkeelle "' + m.name + '"?')) return;
@@ -692,12 +1171,390 @@ window.logAsNeededPackage = async (id) => {
     await saveData(); render();
 };
 
-// ============================
-// NÄKYMÄN VAIHTO (kojelauta / reseptilistaus)
-// ============================
-window.showPrescriptionsView = () => { ui.view = 'prescriptions'; render(); };
-window.showSettingsView = () => { ui.view = 'settings'; render(); };
-window.showDashboard = () => { ui.view = 'dashboard'; render(); };
+// ============================================================
+//  LOMAKKEET
+// ============================================================
+function renderAddForm(){
+    const mode = ui.addFormMode || 'daily';
+    const d = settings.defaults || {};
+    const dailyFields = mode === 'daily' ? `
+        <label for="newMedSize">Pillereitä pakkauksessa (valinnainen)</label>
+        <input type="number" id="newMedSize" min="1" step="1" placeholder="esim. 60" value="${esc(d.packageSize || '')}">
+
+        <label for="newMedDose">Annos päivässä (valinnainen)</label>
+        <input type="number" id="newMedDose" min="0.5" step="0.5" placeholder="esim. 2" value="${esc(d.dosePerDay || '')}">
+        <div class="hint">Sovellus laskee joka päivä yhden annoksen otetuksi. Voit täyttää määrät myöhemmin.</div>
+
+        <label for="newMedStart">Nykyisen pakkauksen aloituspäivä (valinnainen)</label>
+        <input type="date" id="newMedStart">` :
+        `<div class="hint">Tarvittaessa käytettävälle lääkkeelle ei tarvita annostustietoja – seurataan vain reseptiä ja pakkausmäärää.</div>`;
+
+    return `<div class="form-card">
+        <h3>➕ Lisää uusi lääke</h3>
+
+        <div class="mode-toggle">
+            <button type="button" class="${mode==='daily'?'active':''}" onclick="setAddFormMode('daily')">💊 Päivittäin</button>
+            <button type="button" class="${mode==='asNeeded'?'active':''}" onclick="setAddFormMode('asNeeded')">🕐 Tarvittaessa</button>
+        </div>
+
+        <label for="newMedName">Lääkkeen nimi</label>
+        <input type="text" id="newMedName" placeholder="esim. Symbicort">
+
+        <label for="newMedRx">Resepti voimassa asti (valinnainen)</label>
+        <input type="date" id="newMedRx">
+        ${rxQuickPicks('newMedRx')}
+
+        <label for="newMedTotal">Pakkauksia reseptillä yhteensä (valinnainen)</label>
+        <input type="number" id="newMedTotal" min="1" step="1" placeholder="esim. 3">
+
+        <label for="newMedUsed">Joista jo käytetty/ostettu (valinnainen)</label>
+        <input type="number" id="newMedUsed" min="0" step="1" value="1">
+        <div class="hint">Jos lisäät lääkkeen, jota jo käytät, tämä on yleensä 1.</div>
+
+        ${dailyFields}
+
+        <div class="form-error" id="newMedError"></div>
+        <div class="btn-row">
+            <button class="btn btn-secondary" onclick="cancelAddMedicine()">Peruuta</button>
+            <button class="btn btn-primary" onclick="saveNewMedicine()">Tallenna</button>
+        </div>
+    </div>`;
+}
+
+function renderEditForm(m){
+    const mode = ui.editFormMode || m.mode || 'daily';
+    const dailyFields = mode === 'daily' ? `
+        <label for="editSize_${m.id}">Pillereitä pakkauksessa (valinnainen)</label>
+        <input type="number" id="editSize_${m.id}" min="1" step="1" value="${esc(m.packageSize||'')}">
+
+        <label for="editDose_${m.id}">Annos päivässä (valinnainen)</label>
+        <input type="number" id="editDose_${m.id}" min="0.5" step="0.5" value="${esc(m.dosePerDay||'')}">
+
+        <label for="editStart_${m.id}">Nykyisen pakkauksen aloituspäivä (valinnainen)</label>
+        <input type="date" id="editStart_${m.id}" value="${esc(m.startDate||'')}">` :
+        `<div class="hint">Tarvittaessa käytettävälle lääkkeelle ei tarvita annostustietoja.</div>`;
+
+    return `<div class="form-card">
+        <h3>✏️ Muokkaa: ${esc(m.name)}</h3>
+
+        <div class="mode-toggle">
+            <button type="button" class="${mode==='daily'?'active':''}" onclick="setEditFormMode('daily')">💊 Päivittäin</button>
+            <button type="button" class="${mode==='asNeeded'?'active':''}" onclick="setEditFormMode('asNeeded')">🕐 Tarvittaessa</button>
+        </div>
+
+        <label for="editName_${m.id}">Lääkkeen nimi</label>
+        <input type="text" id="editName_${m.id}" value="${esc(m.name)}">
+
+        <label for="editRx_${m.id}">Resepti voimassa asti (valinnainen)</label>
+        <input type="date" id="editRx_${m.id}" value="${esc(m.prescriptionValidUntil||'')}">
+        ${rxQuickPicks('editRx_'+m.id)}
+
+        <label for="editTotal_${m.id}">Pakkauksia reseptillä yhteensä (valinnainen)</label>
+        <input type="number" id="editTotal_${m.id}" min="1" step="1" value="${esc(m.prescriptionTotalPackages||'')}">
+
+        <label for="editUsed_${m.id}">Joista käytetty/ostettu (valinnainen)</label>
+        <input type="number" id="editUsed_${m.id}" min="0" step="1" value="${esc(m.prescriptionPackagesUsed||0)}">
+
+        ${dailyFields}
+
+        <div class="form-error" id="editError_${m.id}"></div>
+        <div class="btn-row">
+            <button class="btn btn-secondary" onclick="cancelEditMedicine()">Peruuta</button>
+            <button class="btn btn-primary" onclick="saveEditMedicine('${m.id}')">Tallenna</button>
+        </div>
+    </div>`;
+}
+
+function renderNewPackageForm(m){
+    const today = getTodayString();
+    const d = settings.defaults || {};
+    const rxHint = m.prescriptionValidUntil
+        ? `Reseptillä käytetty ${m.prescriptionPackagesUsed||0}${m.prescriptionTotalPackages ? '/'+m.prescriptionTotalPackages : ''} pakkausta — tämä pakkaus kasvattaa laskuria automaattisesti.`
+        : `Tälle lääkkeelle ei ole asetettu reseptiä.`;
+    return `<div class="pkg-form-card">
+        <div class="pkg-form-header">
+            <span class="pkg-form-tag">🆕 UUSI PAKKAUS</span>
+            <h3>${esc(m.name)}</h3>
+        </div>
+        <div class="pkg-form-body">
+            <div class="hint" style="margin-bottom:.6rem">Edellinen pakkaus siirtyy historiaan. ${rxHint}</div>
+
+            <div class="pkg-form-row">
+                <div>
+                    <label for="pkgSize_${m.id}">Pillereitä pakkauksessa</label>
+                    <input type="number" id="pkgSize_${m.id}" min="1" step="1" value="${esc(m.packageSize || d.packageSize || '')}">
+                </div>
+                <div>
+                    <label for="pkgDose_${m.id}">Annos päivässä</label>
+                    <input type="number" id="pkgDose_${m.id}" min="0.5" step="0.5" value="${esc(m.dosePerDay || d.dosePerDay || '')}">
+                </div>
+            </div>
+
+            <label for="pkgStart_${m.id}">Aloituspäivä</label>
+            <input type="date" id="pkgStart_${m.id}" value="${today}">
+
+            <div class="form-error" id="pkgError_${m.id}"></div>
+            <div class="btn-row">
+                <button class="btn btn-secondary" onclick="cancelNewPackage()">Peruuta</button>
+                <button class="btn btn-primary" onclick="saveNewPackage('${m.id}')">Tallenna</button>
+            </div>
+        </div>
+    </div>`;
+}
+
+function renderNewPrescriptionForm(m){
+    return `<div class="pkg-form-card">
+        <div class="pkg-form-header rx">
+            <span class="pkg-form-tag">📝 UUSI RESEPTI</span>
+            <h3>${esc(m.name)}</h3>
+        </div>
+        <div class="pkg-form-body">
+            <div class="hint" style="margin-bottom:.6rem">Nykyinen pakkaus jatkuu ennallaan — tämä vain päivittää reseptitiedot ja nollaa pakkauslaskurin.</div>
+
+            <label for="rxNew_${m.id}">Resepti voimassa asti</label>
+            <input type="date" id="rxNew_${m.id}" value="${esc(m.prescriptionValidUntil||'')}">
+            ${rxQuickPicks('rxNew_'+m.id)}
+
+            <label for="rxTotal_${m.id}">Pakkauksia reseptillä yhteensä</label>
+            <input type="number" id="rxTotal_${m.id}" min="1" step="1" placeholder="esim. 3" value="${esc(m.prescriptionTotalPackages||'')}">
+
+            <div class="form-error" id="rxError_${m.id}"></div>
+            <div class="btn-row">
+                <button class="btn btn-secondary" onclick="cancelNewPrescription()">Peruuta</button>
+                <button class="btn btn-primary" onclick="saveNewPrescription('${m.id}')">Tallenna</button>
+            </div>
+        </div>
+    </div>`;
+}
+
+// ============================================================
+//  KORTTIEN APURIT
+// ============================================================
+function packageBadge(days){
+    if(days === null) return '';
+    if(days <= settings.packageCriticalDays) return `<span class="badge badge-package-critical">🔴 Pakkaus ${days<=0?'on loppunut':'loppuu '+days+' pv kuluttua'}</span>`;
+    if(days <= settings.packageWarningDays)  return `<span class="badge badge-package-warning">🟡 Pakkaus loppumassa (${days} pv)</span>`;
+    return '';
+}
+function rxBadge(days){
+    if(days === null) return '';
+    if(days <= settings.rxCriticalDays) return `<span class="badge badge-rx-critical">🔴 Resepti ${days<=0?'on vanhentunut':'vanhenee '+days+' pv kuluttua'}</span>`;
+    if(days <= settings.rxWarningDays)  return `<span class="badge badge-rx-warning">🟡 Resepti vanhenemassa (${days} pv)</span>`;
+    return '';
+}
+function refillBadge(m){
+    if(!m.prescriptionTotalPackages) return '';
+    const remaining = getPrescriptionPackagesRemaining(m);
+    if(remaining <= 0) return `<span class="badge badge-rx-critical">🔴 Resepti käytetty loppuun (${m.prescriptionPackagesUsed}/${m.prescriptionTotalPackages})</span>`;
+    if(remaining === 1) return `<span class="badge badge-rx-warning">🟡 Reseptillä 1 pakkaus jäljellä (${m.prescriptionPackagesUsed}/${m.prescriptionTotalPackages})</span>`;
+    return `<span class="badge badge-neutral">🧾 Reseptillä jäljellä ${remaining} pakkausta (${m.prescriptionPackagesUsed}/${m.prescriptionTotalPackages})</span>`;
+}
+function kauppaBadge(m){
+    return onKauppalistalla(m.name) ? `<span class="badge badge-cart">🛒 Kauppalistalla</span>` : '';
+}
+function kauppaNappi(m){
+    if(kauppaLisays === m.id)    return `<button class="btn btn-cart" disabled>🛒 Lisätään...</button>`;
+    if(onKauppalistalla(m.name)) return `<button class="btn btn-cart" disabled>🛒 Jo kauppalistalla</button>`;
+    return `<button class="btn btn-cart" onclick="lisaaKauppalistaan('${m.id}')">🛒 Lisää kauppalistaan</button>`;
+}
+
+function renderMedCard(m, isHero){
+    if(ui.editId === m.id) return renderEditForm(m);
+    if(ui.newPackageId === m.id) return renderNewPackageForm(m);
+    if(ui.newRxId === m.id) return renderNewPrescriptionForm(m);
+
+    const f = settings.cardFields;
+    const packageDays = getPackageDaysRemaining(m);
+    const packageEnd  = getPackageEndDate(m);
+    const rxDays      = getPrescriptionDaysRemaining(m);
+    const hasPackageInfo = packageDays !== null;
+
+    let cls = 'med-card';
+    if(isHero && hasPackageInfo) cls += ' hero';
+    if(hasPackageInfo){
+        if(packageDays <= settings.packageCriticalDays) cls += ' critical-package';
+        else if(packageDays <= settings.packageWarningDays) cls += ' warning-package';
+    }
+
+    const endText = (f.endDate && packageEnd) ? ` (loppuu noin ${formatDate(packageEnd)})` : '';
+    const packageSection = hasPackageInfo
+        ? `<div class="med-days-number">${packageDays}</div>
+           <div class="med-days-label">päivää lääkettä jäljellä${endText}</div>
+           ${f.badges ? packageBadge(packageDays) : ''}`
+        : `<div class="med-info-row" style="font-style:italic">📦 Pakkaustietoja ei asetettu — paina "Aloita uusi pakkaus" kun tiedät määrät</div>`;
+
+    return `<div class="${cls}">
+        <div class="med-header">
+            <div style="flex:1;min-width:0">
+                <span class="type-chip">💊 Päivittäin</span>
+                <h3>${esc(m.name)}</h3>
+            </div>
+            <div class="med-actions">
+                <button class="icon-btn" onclick="openEditMedicine('${m.id}')" aria-label="Muokkaa">✏️</button>
+                <button class="icon-btn" onclick="deleteMedicine('${m.id}')" aria-label="Poista">🗑️</button>
+            </div>
+        </div>
+
+        ${packageSection}
+
+        ${f.badges ? (rxBadge(rxDays) + refillBadge(m) + (f.cart ? kauppaBadge(m) : '')) : ''}
+
+        ${(f.pkgInfo && m.packageSize && m.dosePerDay) ? `<div class="med-info-row" style="margin-top:.6rem">📦 ${m.packageSize} pilleriä pakkauksessa · ${m.dosePerDay} pilleriä/pv</div>` : ''}
+        ${(f.startDate && m.startDate) ? `<div class="med-info-row">📅 Pakkaus aloitettu ${formatDate(m.startDate)}</div>` : ''}
+        ${f.rx ? (m.prescriptionValidUntil
+            ? `<div class="med-info-row">📝 Resepti voimassa ${formatDate(m.prescriptionValidUntil)} asti</div>`
+            : `<div class="med-info-row">📝 Reseptin voimassaoloa ei asetettu</div>`) : ''}
+
+        <div class="med-buttons">
+            ${f.cart ? kauppaNappi(m) : ''}
+            <button class="btn btn-success" onclick="openNewPackage('${m.id}')">🆕 Aloita uusi pakkaus</button>
+            <button class="btn btn-rx" onclick="openNewPrescription('${m.id}')">📝 Aloita uusi resepti</button>
+        </div>
+    </div>`;
+}
+
+function renderAsNeededCard(m){
+    if(ui.editId === m.id) return renderEditForm(m);
+    if(ui.newRxId === m.id) return renderNewPrescriptionForm(m);
+
+    const f = settings.cardFields;
+    const rxDays = getPrescriptionDaysRemaining(m);
+    const remaining = getPrescriptionPackagesRemaining(m);
+
+    let cls = 'med-card asneeded-card';
+    if(rxDays !== null && rxDays <= settings.rxCriticalDays) cls += ' critical-package';
+    else if(rxDays !== null && rxDays <= settings.rxWarningDays) cls += ' warning-package';
+
+    return `<div class="${cls}">
+        <div class="med-header">
+            <div style="flex:1;min-width:0">
+                <span class="type-chip asneeded">🕐 Tarvittaessa</span>
+                <h3>${esc(m.name)}</h3>
+            </div>
+            <div class="med-actions">
+                <button class="icon-btn" onclick="openEditMedicine('${m.id}')" aria-label="Muokkaa">✏️</button>
+                <button class="icon-btn" onclick="deleteMedicine('${m.id}')" aria-label="Poista">🗑️</button>
+            </div>
+        </div>
+
+        ${f.rx ? (m.prescriptionValidUntil
+            ? `<div class="med-info-row">📝 Resepti voimassa ${formatDate(m.prescriptionValidUntil)} asti${rxDays!==null ? ' ('+rxDays+' pv)' : ''}</div>`
+            : `<div class="med-info-row">📝 Reseptin voimassaoloa ei asetettu</div>`) : ''}
+
+        ${f.badges ? (rxBadge(rxDays) + refillBadge(m) + (f.cart ? kauppaBadge(m) : '')) : ''}
+
+        <div class="med-buttons">
+            ${f.cart ? kauppaNappi(m) : ''}
+            ${m.prescriptionTotalPackages ? `<button class="btn btn-secondary" onclick="logAsNeededPackage('${m.id}')">📦 Merkitse pakkaus ostetuksi (${remaining} jäljellä)</button>` : ''}
+            <button class="btn btn-rx" onclick="openNewPrescription('${m.id}')">📝 Aloita uusi resepti</button>
+        </div>
+    </div>`;
+}
+
+// ============================================================
+//  RESEPTILISTAUS
+// ============================================================
+function renderPrescriptionsView(){
+    const meds = Object.entries(data.medicines).map(([id,m]) => ({ id, ...m })).filter(m => m.prescriptionValidUntil);
+    meds.sort((a,b) => new Date(a.prescriptionValidUntil) - new Date(b.prescriptionValidUntil));
+
+    let html = `<h2 class="section-title">📋 Reseptien voimassaolo</h2>`;
+
+    if(meds.length === 0){
+        html += `<div class="empty-state">Ei lääkkeitä, joilla on reseptin voimassaolopäivä asetettuna.</div>`;
+    } else {
+        meds.forEach(m => {
+            const days = getPrescriptionDaysRemaining(m);
+            let cardCls = 'rx-card', chipCls = 'rx-days-chip';
+            if(days <= settings.rxCriticalDays){ cardCls += ' rx-critical'; chipCls += ' critical'; }
+            else if(days <= settings.rxWarningDays){ cardCls += ' rx-warning'; chipCls += ' warning'; }
+
+            const chipContent = days <= 0
+                ? `<span class="num">⚠️</span><span class="unit">vanhentunut</span>`
+                : `<span class="num">${days}</span><span class="unit">pv</span>`;
+
+            html += `<div class="${cardCls}">
+                <div class="rx-card-top">
+                    <h3>${esc(m.name)}</h3>
+                    <div class="${chipCls}">${chipContent}</div>
+                </div>
+                <div class="rx-card-date">📅 Resepti vanhenee ${formatDate(m.prescriptionValidUntil)}</div>
+                ${refillBadge(m)}
+            </div>`;
+        });
+    }
+    document.getElementById('app').innerHTML = html;
+}
+
+// ============================================================
+//  PIN-LUKITUS
+//  Asetukset on tarkoitettu vain omaan käyttöön, joten näkymä
+//  avataan koodilla. Koodi kysytään kerran istuntoa kohti.
+// ============================================================
+window.pinPress = (d) => {
+    if(ui.pinInput.length >= 4) return;
+    ui.pinInput += d;
+    ui.pinError = '';
+    if(ui.pinInput.length === 4){
+        if(ui.pinInput === SETTINGS_PIN){
+            settingsUnlocked = true;
+            ui.pinInput = '';
+        } else {
+            ui.pinError = 'Väärä koodi. Yritä uudelleen.';
+            ui.pinInput = '';
+        }
+    }
+    render();
+};
+window.pinBack = () => { ui.pinInput = ui.pinInput.slice(0,-1); render(); };
+window.pinCancel = () => { ui.pinInput = ''; ui.pinError = ''; ui.view = 'dashboard'; render(); };
+
+function renderPinView(){
+    const dots = [0,1,2,3].map(i =>
+        `<div class="pin-dot ${ui.pinInput.length > i ? 'filled' : ''} ${ui.pinError && ui.pinInput.length===0 ? 'err' : ''}"></div>`
+    ).join('');
+    const keys = [1,2,3,4,5,6,7,8,9].map(n => `<button onclick="pinPress('${n}')">${n}</button>`).join('');
+
+    document.getElementById('app').innerHTML = `<div class="pin-wrap">
+        <div class="pin-title">🔒 Asetukset on lukittu</div>
+        <div class="pin-sub">Syötä nelinumeroinen koodi</div>
+        <div class="pin-dots">${dots}</div>
+        <div class="pin-pad">
+            ${keys}
+            <button class="wide" onclick="pinCancel()">Peruuta</button>
+            <button onclick="pinPress('0')">0</button>
+            <button class="wide" onclick="pinBack()">⌫</button>
+        </div>
+        <div class="pin-error">${esc(ui.pinError)}</div>
+    </div>`;
+}
+
+// ============================================================
+//  ASETUSTEN MUUTOKSET
+// ============================================================
+window.toggleSetSection = (key) => { ui.settingsSection = (ui.settingsSection === key) ? '' : key; render(); };
+
+window.setTheme = (key) => {
+    if(!THEMES[key]) return;
+    settings.theme = key;
+    settings.accentHue = THEMES[key].hue;   // teema tuo mukanaan oman perussävynsä
+    applyTheme(); render(); saveSettingsSoon();
+};
+// Liukusäädin päivittää värin heti mutta ei piirrä näkymää uusiksi,
+// jotta säädin pysyy sormen alla.
+window.previewHue = (v) => {
+    settings.accentHue = +v;
+    applyTheme();
+    const lbl = document.getElementById('hueValue');
+    if(lbl) lbl.textContent = Math.round(v) + '°';
+};
+window.commitHue = () => saveSettingsSoon();
+window.setTextScale = (v) => { settings.textScale = +v; applyTheme(); render(); saveSettingsSoon(); };
+window.setDensity = (v) => { settings.density = v; applyTheme(); render(); saveSettingsSoon(); };
+window.toggleCardField = (k) => {
+    settings.cardFields[k] = !settings.cardFields[k];
+    render(); saveSettingsSoon();
+};
 
 window.saveThresholds = async () => {
     const pkgWarn = parseInt(document.getElementById('setPkgWarn').value, 10);
@@ -710,359 +1567,362 @@ window.saveThresholds = async () => {
         err.textContent = 'Anna kelvolliset positiiviset luvut kaikkiin kenttiin.';
         return;
     }
-
-    thresholds = { packageWarningDays: pkgWarn, packageCriticalDays: pkgCrit, rxWarningDays: rxWarn, rxCriticalDays: rxCrit };
-    data.settings = thresholds;
+    settings.packageWarningDays = pkgWarn;
+    settings.packageCriticalDays = pkgCrit;
+    settings.rxWarningDays = rxWarn;
+    settings.rxCriticalDays = rxCrit;
     await saveData();
+    showSaveStatus('✅ Hälytysrajat tallennettu', '#22c55e');
+    render();
+};
+window.resetThresholds = () => {
+    settings.packageWarningDays = DEFAULT_SETTINGS.packageWarningDays;
+    settings.packageCriticalDays = DEFAULT_SETTINGS.packageCriticalDays;
+    settings.rxWarningDays = DEFAULT_SETTINGS.rxWarningDays;
+    settings.rxCriticalDays = DEFAULT_SETTINGS.rxCriticalDays;
+    render();
+};
+
+window.saveDefaults = async () => {
+    const size = document.getElementById('defSize').value;
+    const dose = document.getElementById('defDose').value;
+    const yrs  = parseInt(document.getElementById('defRxYears').value, 10);
+    settings.defaults = {
+        packageSize: size === '' ? '' : Math.max(0, parseFloat(size) || 0) || '',
+        dosePerDay:  dose === '' ? '' : Math.max(0, parseFloat(dose) || 0) || '',
+        rxYears: (yrs === 1 || yrs === 2) ? yrs : 2
+    };
+    await saveData();
+    showSaveStatus('✅ Oletusarvot tallennettu', '#22c55e');
+    render();
+};
+
+// ============================================================
+//  VIENTI JA TUONTI
+// ============================================================
+function downloadJson(filename, obj){
+    const blob = new Blob([JSON.stringify(obj, null, 2)], { type:'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+function stamp(){
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+window.exportAll = () => {
+    downloadJson('laakevahti-varmuuskopio-' + stamp() + '.json', {
+        app: 'laakevahti', type: 'full', version: APP_VERSION,
+        exportedAt: new Date().toISOString(),
+        data: { medicines: data.medicines, settings: settings }
+    });
+    showSaveStatus('✅ Varmuuskopio ladattu', '#22c55e');
+};
+window.exportSettings = () => {
+    downloadJson('laakevahti-asetukset-' + stamp() + '.json', {
+        app: 'laakevahti', type: 'settings', version: APP_VERSION,
+        exportedAt: new Date().toISOString(),
+        settings: settings
+    });
+    showSaveStatus('✅ Asetukset ladattu', '#22c55e');
+};
+
+// Tuotavaa tiedostoa ei koskaan oteta käyttöön suoraan: siitä
+// näytetään ensin yhteenveto ja vasta vahvistus kirjoittaa tiedot.
+window.handleImportFile = (input, kind) => {
+    const file = input.files && input.files[0];
+    input.value = '';
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+        try {
+            const parsed = JSON.parse(reader.result);
+            const medicines = (parsed.data && parsed.data.medicines) || parsed.medicines || null;
+            const sets      = (parsed.data && parsed.data.settings)  || parsed.settings  || null;
+
+            if(kind === 'settings'){
+                if(!sets || typeof sets !== 'object') throw new Error('ei asetuksia');
+                pendingImport = { kind:'settings', settings: sets, file: file.name, exportedAt: parsed.exportedAt || null };
+            } else {
+                if(!medicines || typeof medicines !== 'object') throw new Error('ei lääkkeitä');
+                pendingImport = { kind:'full', medicines, settings: sets, file: file.name, exportedAt: parsed.exportedAt || null };
+            }
+            ui.settingsSection = 'tiedot';
+            render();
+        } catch(e){
+            pendingImport = { kind:'error', file: file.name, message:'Tiedostoa ei voitu lukea. Varmista että se on tästä sovelluksesta ladattu JSON-tiedosto.' };
+            ui.settingsSection = 'tiedot';
+            render();
+        }
+    };
+    reader.onerror = () => {
+        pendingImport = { kind:'error', file: file.name, message:'Tiedoston lukeminen epäonnistui.' };
+        render();
+    };
+    reader.readAsText(file);
+};
+window.cancelImport = () => { pendingImport = null; render(); };
+window.confirmImport = async () => {
+    if(!pendingImport || pendingImport.kind === 'error') return;
+
+    if(pendingImport.kind === 'settings'){
+        settings = cloneSettings({ ...settings, ...pendingImport.settings });
+        data.settings = settings;
+        applyTheme();
+    } else {
+        const meds = {};
+        Object.entries(pendingImport.medicines).forEach(([id, m]) => {
+            if(!m || typeof m !== 'object' || !m.name) return;
+            meds[id] = {
+                name: String(m.name),
+                mode: m.mode === 'asNeeded' ? 'asNeeded' : 'daily',
+                packageSize: m.packageSize || null,
+                dosePerDay: m.dosePerDay || null,
+                startDate: m.startDate || null,
+                prescriptionValidUntil: m.prescriptionValidUntil || null,
+                prescriptionTotalPackages: m.prescriptionTotalPackages || null,
+                prescriptionPackagesUsed: m.prescriptionPackagesUsed || 0
+            };
+        });
+        data.medicines = meds;
+        if(pendingImport.settings){
+            settings = cloneSettings({ ...settings, ...pendingImport.settings });
+            data.settings = settings;
+            applyTheme();
+        }
+    }
+    pendingImport = null;
+    legacyDataDetected = false;
+    await saveData();
+    showSaveStatus('✅ Tiedot tuotu', '#22c55e');
+    render();
+};
+
+// ============================================================
+//  ASETUSNÄKYMÄ
+// ============================================================
+function switchRow(label, sub, on, action){
+    return `<div class="set-row">
+        <div class="lbl">${label}${sub ? `<small>${sub}</small>` : ''}</div>
+        <button class="switch ${on ? 'on' : ''}" onclick="${action}" role="switch" aria-checked="${on}" aria-label="${esc(label)}"></button>
+    </div>`;
+}
+
+function group(key, icon, title, body){
+    const open = ui.settingsSection === key;
+    return `<div class="set-group ${open ? 'open' : ''}">
+        <button class="set-head" onclick="toggleSetSection('${key}')">
+            <span>${icon}</span><span>${title}</span><span class="arrow">›</span>
+        </button>
+        ${open ? `<div class="set-body">${body}</div>` : ''}
+    </div>`;
+}
+
+function themePreview(){
+    return `<div class="preview">
+        <div class="plabel">Esikatselu</div>
+        <div class="med-card hero" style="margin-bottom:.5rem">
+            <div class="med-header">
+                <div style="flex:1;min-width:0">
+                    <span class="type-chip">💊 Päivittäin</span>
+                    <h3>Symbicort</h3>
+                </div>
+            </div>
+            <div class="med-days-number">12</div>
+            <div class="med-days-label">päivää lääkettä jäljellä</div>
+            <span class="badge badge-neutral">🧾 Reseptillä jäljellä 2 pakkausta</span>
+        </div>
+        <div class="med-card asneeded-card" style="margin-bottom:0">
+            <div class="med-header">
+                <div style="flex:1;min-width:0">
+                    <span class="type-chip asneeded">🕐 Tarvittaessa</span>
+                    <h3>Ventoline</h3>
+                </div>
+            </div>
+            <div class="med-info-row">📝 Resepti voimassa 12.4.2027 asti</div>
+            <span class="badge badge-package-warning">🟡 Pakkaus loppumassa (8 pv)</span>
+        </div>
+    </div>`;
+}
+
+function renderSettingsView(){
+    const t = settings;
+    const f = settings.cardFields;
+    const d = settings.defaults || {};
+
+    // --- Ulkoasu ---
+    const themeBtns = Object.entries(THEMES).map(([key, th]) => {
+        const c1 = `hsl(${th.hue} ${th.bs}% ${th.bl}%)`;
+        const c2 = `hsl(${th.hue - 17} ${th.bs - 2}% ${th.bl + 13}%)`;
+        return `<button class="theme-btn ${t.theme===key?'on':''}" onclick="setTheme('${key}')">
+            <span class="theme-dot" style="background:linear-gradient(135deg,${c1},${c2})"></span>${th.name}
+        </button>`;
+    }).join('');
+
+    const scaleBtns = TEXT_SCALES.map(s =>
+        `<button class="${Math.abs((t.textScale||1) - s.v) < 0.01 ? 'on' : ''}" onclick="setTextScale(${s.v})">A</button>`
+    ).join('');
+
+    const ulkoasu = `
+        <label style="margin-top:1rem">Teema</label>
+        <div class="theme-grid">${themeBtns}</div>
+        ${themePreview()}
+
+        <label>Korostusväri</label>
+        <div class="hue-track"></div>
+        <input type="range" min="0" max="360" step="1" value="${t.accentHue}"
+               oninput="previewHue(this.value)" onchange="commitHue()" aria-label="Korostusväri">
+        <div class="hint">Sävy: <span id="hueValue">${Math.round(t.accentHue)}°</span> — tekstin väri vaihtuu automaattisesti luettavaksi.</div>
+
+        <label style="margin-top:1.1rem">Tekstin koko</label>
+        <div class="scale-row">${scaleBtns}</div>
+        <div class="hint">${TEXT_SCALES.find(s => Math.abs((t.textScale||1) - s.v) < 0.01)?.label || 'Normaali'}</div>
+
+        <label style="margin-top:1.1rem">Korttien tiiviys</label>
+        <div class="scale-row">
+            <button class="${t.density!=='tiivis'?'on':''}" onclick="setDensity('normal')" style="font-size:.85rem">Väljä</button>
+            <button class="${t.density==='tiivis'?'on':''}" onclick="setDensity('tiivis')" style="font-size:.85rem">Tiivis</button>
+        </div>
+
+        <label style="margin-top:1.1rem">Mitä lääkekortissa näytetään</label>
+        ${switchRow('Pakkauksen tiedot','Pillerimäärä ja annos päivässä',f.pkgInfo,"toggleCardField('pkgInfo')")}
+        ${switchRow('Aloituspäivä','Milloin nykyinen pakkaus aloitettiin',f.startDate,"toggleCardField('startDate')")}
+        ${switchRow('Arvioitu loppumispäivä','Päiväluvun perässä suluissa',f.endDate,"toggleCardField('endDate')")}
+        ${switchRow('Reseptirivi','Reseptin voimassaolo',f.rx,"toggleCardField('rx')")}
+        ${switchRow('Varoitusmerkit','Keltaiset ja punaiset merkit',f.badges,"toggleCardField('badges')")}
+        ${switchRow('Kauppalista','Nappi ja merkki kauppalistasta',f.cart,"toggleCardField('cart')")}
+    `;
+
+    // --- Hälytysrajat ---
+    const halytykset = `
+        <div class="hint" style="margin:1rem 0 .5rem">Näiden rajojen mukaan sovellus näyttää keltaiset ja punaiset varoitukset. Muutokset tallentuvat vasta Tallenna-napista.</div>
+
+        <label for="setPkgWarn">📦 Pakkaus loppumassa (keltainen), päivää ennen</label>
+        <input type="number" id="setPkgWarn" min="0" step="1" value="${t.packageWarningDays}">
+
+        <label for="setPkgCrit">📦 Pakkaus loppuu pian (punainen), päivää ennen</label>
+        <input type="number" id="setPkgCrit" min="0" step="1" value="${t.packageCriticalDays}">
+
+        <label for="setRxWarn">📝 Resepti vanhenemassa (keltainen), päivää ennen</label>
+        <input type="number" id="setRxWarn" min="0" step="1" value="${t.rxWarningDays}">
+
+        <label for="setRxCrit">📝 Resepti vanhenee pian (punainen), päivää ennen</label>
+        <input type="number" id="setRxCrit" min="0" step="1" value="${t.rxCriticalDays}">
+
+        <div class="form-error" id="setError"></div>
+        <div class="btn-row">
+            <button class="btn btn-secondary" onclick="resetThresholds()">Palauta oletukset</button>
+            <button class="btn btn-primary" onclick="saveThresholds()">Tallenna</button>
+        </div>`;
+
+    // --- Tiedot ---
+    let importBox = '';
+    if(pendingImport){
+        if(pendingImport.kind === 'error'){
+            importBox = `<div class="import-preview" style="border-color:var(--danger);background:var(--danger-bg)">
+                <b>⚠️ ${esc(pendingImport.file)}</b>
+                <div style="margin-top:.35rem">${esc(pendingImport.message)}</div>
+                <div class="btn-row"><button class="btn btn-secondary" onclick="cancelImport()">Sulje</button><span></span></div>
+            </div>`;
+        } else if(pendingImport.kind === 'settings'){
+            const keys = Object.keys(pendingImport.settings || {}).length;
+            importBox = `<div class="import-preview">
+                <b>Tuotavat asetukset</b>
+                <ul>
+                    <li>Tiedosto: ${esc(pendingImport.file)}</li>
+                    <li>Asetuksia: ${keys} kpl</li>
+                    ${pendingImport.exportedAt ? `<li>Viety: ${esc(new Date(pendingImport.exportedAt).toLocaleString('fi-FI'))}</li>` : ''}
+                </ul>
+                <div style="margin-top:.5rem">Lääkkeisiin ei kosketa.</div>
+                <div class="btn-row">
+                    <button class="btn btn-secondary" onclick="cancelImport()">Peruuta</button>
+                    <button class="btn btn-primary" onclick="confirmImport()">Ota käyttöön</button>
+                </div>
+            </div>`;
+        } else {
+            const meds = Object.values(pendingImport.medicines);
+            const names = meds.slice(0,5).map(m => esc(m.name)).join(', ');
+            importBox = `<div class="import-preview">
+                <b>Tuotavat tiedot</b>
+                <ul>
+                    <li>Tiedosto: ${esc(pendingImport.file)}</li>
+                    <li>Lääkkeitä: ${meds.length} kpl</li>
+                    <li>Nykyisiä lääkkeitä: ${Object.keys(data.medicines).length} kpl</li>
+                    ${pendingImport.settings ? `<li>Sisältää myös asetukset</li>` : ''}
+                    ${pendingImport.exportedAt ? `<li>Viety: ${esc(new Date(pendingImport.exportedAt).toLocaleString('fi-FI'))}</li>` : ''}
+                </ul>
+                ${names ? `<div style="margin-top:.5rem">${names}${meds.length>5 ? ' ja ' + (meds.length-5) + ' muuta' : ''}</div>` : ''}
+                <div style="margin-top:.5rem;color:var(--danger);font-weight:700">Tuonti korvaa kaikki nykyiset lääkkeet.</div>
+                <div class="btn-row">
+                    <button class="btn btn-secondary" onclick="cancelImport()">Peruuta</button>
+                    <button class="btn btn-primary" onclick="confirmImport()">Korvaa tiedot</button>
+                </div>
+            </div>`;
+        }
+    }
+
+    const tiedot = `
+        <label style="margin-top:1rem">Oletusarvot uudelle lääkkeelle</label>
+        <div class="hint" style="margin-bottom:.5rem">Nämä esitäytetään lisäyslomakkeeseen. Jätä tyhjäksi jos et halua esitäyttöä.</div>
+        <div class="pkg-form-row">
+            <div>
+                <label for="defSize">Pillereitä pakkauksessa</label>
+                <input type="number" id="defSize" min="0" step="1" value="${esc(d.packageSize || '')}" placeholder="esim. 60">
+            </div>
+            <div>
+                <label for="defDose">Annos päivässä</label>
+                <input type="number" id="defDose" min="0" step="0.5" value="${esc(d.dosePerDay || '')}" placeholder="esim. 2">
+            </div>
+        </div>
+        <label for="defRxYears">Reseptin oletuspituus</label>
+        <input type="number" id="defRxYears" min="1" max="2" step="1" value="${d.rxYears || 2}">
+        <div class="hint">Käytetään lomakkeiden pikavalinnoissa.</div>
+        <button class="btn btn-primary" style="margin-top:.9rem" onclick="saveDefaults()">Tallenna oletusarvot</button>
+
+        <label style="margin-top:1.4rem">Varmuuskopiot</label>
+        <button class="btn btn-secondary" onclick="exportAll()">⬇️ Vie kaikki tiedot (JSON)</button>
+        <label class="file-label">⬆️ Tuo tiedot tiedostosta
+            <input type="file" accept="application/json,.json" onchange="handleImportFile(this,'full')">
+        </label>
+
+        <label style="margin-top:1.1rem">Vain asetukset</label>
+        <button class="btn btn-secondary" onclick="exportSettings()">⬇️ Vie asetukset</button>
+        <label class="file-label">⬆️ Tuo asetukset
+            <input type="file" accept="application/json,.json" onchange="handleImportFile(this,'settings')">
+        </label>
+
+        ${importBox}`;
+
+    // --- Tili ---
+    const tili = `
+        <div class="set-row"><div class="lbl">Kirjautunut<small>${esc((auth.currentUser && auth.currentUser.email) || '-')}</small></div></div>
+        <div class="set-row"><div class="lbl">Versio<small>${APP_VERSION}</small></div></div>
+        <div class="set-row"><div class="lbl">Lääkkeitä<small>${Object.keys(data.medicines).length} kpl</small></div></div>
+        <div class="set-row"><div class="lbl">Asetusten lukitus<small>Avattu tälle istunnolle. Koodi kysytään uudelleen kun sovellus käynnistetään.</small></div></div>
+        <button class="btn btn-secondary" style="margin-top:.8rem" onclick="lukitseAsetukset()">🔒 Lukitse asetukset nyt</button>`;
+
+    document.getElementById('app').innerHTML =
+        `<h2 class="section-title">⚙️ Asetukset</h2>`
+        + group('ulkoasu','🎨','Ulkoasu', ulkoasu)
+        + group('halytykset','🔔','Hälytysrajat', halytykset)
+        + group('tiedot','💾','Tiedot ja varmuuskopiot', tiedot)
+        + group('tili','👤','Tili ja sovellus', tili)
+        + `<div class="version-line">Lääkevahti ${APP_VERSION}</div>`;
+}
+
+window.lukitseAsetukset = () => {
+    settingsUnlocked = false;
     ui.view = 'dashboard';
     render();
 };
 
-window.resetThresholds = () => {
-    thresholds = { ...DEFAULT_THRESHOLDS };
-    render();
-};
-
-// ============================
-// RENDER-APURIT
-// ============================
-function packageBadge(days){
-    if(days === null) return '';
-    if(days <= thresholds.packageCriticalDays) return `<span class="badge badge-package-critical">🔴 Pakkaus ${days<=0?'on loppunut':'loppuu '+days+' pv kuluttua'}</span>`;
-    if(days <= thresholds.packageWarningDays)  return `<span class="badge badge-package-warning">🟡 Pakkaus loppumassa (${days} pv)</span>`;
-    return '';
-}
-function rxBadge(days){
-    if(days === null) return '';
-    if(days <= thresholds.rxCriticalDays) return `<span class="badge badge-rx-critical">🔴 Resepti ${days<=0?'on vanhentunut':'vanhenee '+days+' pv kuluttua'}</span>`;
-    if(days <= thresholds.rxWarningDays)  return `<span class="badge badge-rx-warning">🟡 Resepti vanhenemassa (${days} pv)</span>`;
-    return '';
-}
-function refillBadge(m){
-    if(!m.prescriptionTotalPackages) return '';
-    const remaining = getPrescriptionPackagesRemaining(m);
-    if(remaining <= 0) return `<span class="badge badge-rx-critical">🔴 Resepti käytetty loppuun (${m.prescriptionPackagesUsed}/${m.prescriptionTotalPackages})</span>`;
-    if(remaining === 1) return `<span class="badge badge-rx-warning">🟡 Reseptillä 1 pakkaus jäljellä (${m.prescriptionPackagesUsed}/${m.prescriptionTotalPackages})</span>`;
-    return `<span class="badge badge-neutral">🧾 Reseptillä jäljellä ${remaining} pakkausta (${m.prescriptionPackagesUsed}/${m.prescriptionTotalPackages})</span>`;
-}
-
-// Kauppalistan tila näkyy sekä merkkinä että napissa: merkki kertoo
-// tilanteen silmäyksellä, nappi estää saman lääkkeen lisäämisen kahdesti.
-function kauppaBadge(m){
-    return onKauppalistalla(m.name) ? `<span class="badge badge-cart">🛒 Kauppalistalla</span>` : '';
-}
-function kauppaNappi(m){
-    if(kauppaLisays === m.id)   return `<button class="btn-cart" disabled>🛒 Lisätään...</button>`;
-    if(onKauppalistalla(m.name)) return `<button class="btn-cart" disabled>🛒 Jo kauppalistalla</button>`;
-    return `<button class="btn-cart" onclick="lisaaKauppalistaan('${m.id}')">🛒 Lisää kauppalistaan</button>`;
-}
-
-function renderAddForm(){
-    const mode = ui.addFormMode || 'daily';
-    const dailyFields = mode === 'daily' ? `
-        <label for="newMedSize">Pillereitä pakkauksessa (valinnainen)</label>
-        <input type="number" id="newMedSize" min="1" step="1" placeholder="esim. 60">
-
-        <label for="newMedDose">Annos päivässä (valinnainen)</label>
-        <input type="number" id="newMedDose" min="0.5" step="0.5" placeholder="esim. 2">
-        <div class="hint">Sovellus laskee automaattisesti joka päivä yhden annoksen otetuksi. Voit jättää tyhjäksi jos et vielä tiedä määriä — täytä myöhemmin "Aloita uusi pakkaus" -toiminnolla.</div>
-
-        <label for="newMedStart">Nykyisen pakkauksen aloituspäivä (valinnainen)</label>
-        <input type="date" id="newMedStart">` :
-        `<div class="hint">Tarvittaessa käytettävälle lääkkeelle ei tarvita annostustietoja – seurataan vain reseptiä ja pakkausmäärää.</div>`;
-
-    return `<div class="form-card">
-        <h3>➕ Lisää uusi lääke</h3>
-
-        <div class="mode-toggle">
-            <button type="button" class="${mode==='daily'?'active':''}" onclick="setAddFormMode('daily')">💊 Päivittäin käytettävä</button>
-            <button type="button" class="${mode==='asNeeded'?'active':''}" onclick="setAddFormMode('asNeeded')">🕐 Tarvittaessa / resepti</button>
-        </div>
-
-        <label for="newMedName">Lääkkeen nimi</label>
-        <input type="text" id="newMedName" placeholder="esim. Symbicort">
-
-        <label for="newMedRx">Resepti voimassa asti (valinnainen)</label>
-        <input type="date" id="newMedRx">
-
-        <label for="newMedTotal">Pakkauksia reseptillä yhteensä (valinnainen, esim. 3)</label>
-        <input type="number" id="newMedTotal" min="1" step="1" placeholder="esim. 3">
-
-        <label for="newMedUsed">Joista jo käytetty/ostettu (valinnainen)</label>
-        <input type="number" id="newMedUsed" min="0" step="1" value="1">
-        <div class="hint">Jos lisäät lääkkeen, jota jo käytät, tämä on yleensä 1.</div>
-
-        ${dailyFields}
-
-        <div class="form-error" id="newMedError"></div>
-        <div class="form-buttons">
-            <button class="btn-secondary" onclick="cancelAddMedicine()">Peruuta</button>
-            <button class="btn-primary" onclick="saveNewMedicine()">Tallenna</button>
-        </div>
-    </div>`;
-}
-
-function renderEditForm(m){
-    const mode = ui.editFormMode || m.mode || 'daily';
-    const dailyFields = mode === 'daily' ? `
-        <label for="editSize_${m.id}">Pillereitä pakkauksessa (valinnainen)</label>
-        <input type="number" id="editSize_${m.id}" min="1" step="1" value="${m.packageSize||''}">
-
-        <label for="editDose_${m.id}">Annos päivässä (valinnainen)</label>
-        <input type="number" id="editDose_${m.id}" min="0.5" step="0.5" value="${m.dosePerDay||''}">
-
-        <label for="editStart_${m.id}">Nykyisen pakkauksen aloituspäivä (valinnainen)</label>
-        <input type="date" id="editStart_${m.id}" value="${m.startDate||''}">` :
-        `<div class="hint">Tarvittaessa käytettävälle lääkkeelle ei tarvita annostustietoja.</div>`;
-
-    return `<div class="med-card">
-        <h3 style="color:#0B6E8C;margin-bottom:14px;">✏️ Muokkaa: ${m.name}</h3>
-
-        <div class="mode-toggle">
-            <button type="button" class="${mode==='daily'?'active':''}" onclick="setEditFormMode('daily')">💊 Päivittäin käytettävä</button>
-            <button type="button" class="${mode==='asNeeded'?'active':''}" onclick="setEditFormMode('asNeeded')">🕐 Tarvittaessa / resepti</button>
-        </div>
-
-        <label for="editName_${m.id}">Lääkkeen nimi</label>
-        <input type="text" id="editName_${m.id}" value="${m.name}">
-
-        <label for="editRx_${m.id}">Resepti voimassa asti (valinnainen)</label>
-        <input type="date" id="editRx_${m.id}" value="${m.prescriptionValidUntil||''}">
-
-        <label for="editTotal_${m.id}">Pakkauksia reseptillä yhteensä (valinnainen)</label>
-        <input type="number" id="editTotal_${m.id}" min="1" step="1" value="${m.prescriptionTotalPackages||''}">
-
-        <label for="editUsed_${m.id}">Joista käytetty/ostettu (valinnainen)</label>
-        <input type="number" id="editUsed_${m.id}" min="0" step="1" value="${m.prescriptionPackagesUsed||0}">
-
-        ${dailyFields}
-
-        <div class="form-error" id="editError_${m.id}"></div>
-        <div class="form-buttons">
-            <button class="btn-secondary" onclick="cancelEditMedicine()">Peruuta</button>
-            <button class="btn-primary" onclick="saveEditMedicine('${m.id}')">Tallenna</button>
-        </div>
-    </div>`;
-}
-
-function renderNewPackageForm(m){
-    const today = getTodayString();
-    const rxHint = m.prescriptionValidUntil
-        ? `Reseptillä käytetty ${m.prescriptionPackagesUsed||0}${m.prescriptionTotalPackages ? '/'+m.prescriptionTotalPackages : ''} pakkausta — tämä pakkaus kasvattaa laskuria automaattisesti.`
-        : `Tälle lääkkeelle ei ole asetettu reseptiä.`;
-    return `<div class="pkg-form-card">
-        <div class="pkg-form-header">
-            <span class="pkg-form-tag">🆕 UUSI PAKKAUS</span>
-            <h3>${m.name}</h3>
-        </div>
-        <div class="pkg-form-body">
-            <div class="hint" style="margin-bottom:4px;">Edellinen pakkaus siirtyy historiaan. ${rxHint}</div>
-
-            <div class="pkg-form-row">
-                <div>
-                    <label for="pkgSize_${m.id}">Pillereitä pakkauksessa</label>
-                    <input type="number" id="pkgSize_${m.id}" min="1" step="1" value="${m.packageSize||''}">
-                </div>
-                <div>
-                    <label for="pkgDose_${m.id}">Annos päivässä</label>
-                    <input type="number" id="pkgDose_${m.id}" min="0.5" step="0.5" value="${m.dosePerDay||''}">
-                </div>
-            </div>
-
-            <label for="pkgStart_${m.id}">Aloituspäivä</label>
-            <input type="date" id="pkgStart_${m.id}" value="${today}">
-
-            <div class="form-error" id="pkgError_${m.id}"></div>
-            <div class="form-buttons">
-                <button class="btn-secondary" onclick="cancelNewPackage()">Peruuta</button>
-                <button class="btn-primary" onclick="saveNewPackage('${m.id}')">Tallenna</button>
-            </div>
-        </div>
-    </div>`;
-}
-
-function renderNewPrescriptionForm(m){
-    return `<div class="pkg-form-card">
-        <div class="pkg-form-header" style="background:linear-gradient(135deg,#f97316 0%,#fbbf24 100%);">
-            <span class="pkg-form-tag">📝 UUSI RESEPTI</span>
-            <h3>${m.name}</h3>
-        </div>
-        <div class="pkg-form-body">
-            <div class="hint" style="margin-bottom:4px;">Nykyinen pakkaus jatkuu ennallaan — tämä vain päivittää reseptitiedot ja nollaa pakkauslaskurin.</div>
-
-            <label for="rxNew_${m.id}">Resepti voimassa asti</label>
-            <input type="date" id="rxNew_${m.id}" value="${m.prescriptionValidUntil||''}">
-
-            <label for="rxTotal_${m.id}">Pakkauksia reseptillä yhteensä</label>
-            <input type="number" id="rxTotal_${m.id}" min="1" step="1" placeholder="esim. 3" value="${m.prescriptionTotalPackages||''}">
-
-            <div class="form-error" id="rxError_${m.id}"></div>
-            <div class="form-buttons">
-                <button class="btn-secondary" onclick="cancelNewPrescription()">Peruuta</button>
-                <button class="btn-primary" onclick="saveNewPrescription('${m.id}')">Tallenna</button>
-            </div>
-        </div>
-    </div>`;
-}
-
-function renderMedCard(m, isHero){
-    if(ui.editId === m.id) return renderEditForm(m);
-    if(ui.newPackageId === m.id) return renderNewPackageForm(m);
-    if(ui.newRxId === m.id) return renderNewPrescriptionForm(m);
-
-    const packageDays = getPackageDaysRemaining(m);
-    const packageEnd  = getPackageEndDate(m);
-    const rxDays      = getPrescriptionDaysRemaining(m);
-    const hasPackageInfo = packageDays !== null;
-
-    let cls = 'med-card';
-    if(isHero && hasPackageInfo) cls += ' hero';
-    if(hasPackageInfo){
-        if(packageDays <= thresholds.packageCriticalDays) cls += ' critical-package';
-        else if(packageDays <= thresholds.packageWarningDays) cls += ' warning-package';
-    }
-
-    const packageSection = hasPackageInfo
-        ? `<div class="med-days-number">${packageDays}</div>
-           <div class="med-days-label">päivää lääkettä jäljellä (loppuu noin ${formatDate(packageEnd)})</div>
-           ${packageBadge(packageDays)}`
-        : `<div class="med-info-row" style="font-style:italic;color:#999;">📦 Pakkaustietoja ei asetettu — paina "Aloita uusi pakkaus" kun tiedät määrät</div>`;
-
-    return `<div class="${cls}">
-        <div class="med-header">
-            <h3>${m.name}</h3>
-            <div class="med-actions">
-                <button class="icon-btn" onclick="openEditMedicine('${m.id}')">✏️</button>
-                <button class="icon-btn" onclick="deleteMedicine('${m.id}')">🗑️</button>
-            </div>
-        </div>
-
-        ${packageSection}
-
-        ${rxBadge(rxDays)}${refillBadge(m)}${kauppaBadge(m)}
-
-        ${(m.packageSize && m.dosePerDay) ? `<div class="med-info-row" style="margin-top:10px;">📦 ${m.packageSize} pilleriä pakkauksessa · ${m.dosePerDay} pilleriä/pv</div>` : ''}
-        ${m.startDate ? `<div class="med-info-row">📅 Pakkaus aloitettu ${formatDate(m.startDate)}</div>` : ''}
-        ${m.prescriptionValidUntil ? `<div class="med-info-row">📝 Resepti voimassa ${formatDate(m.prescriptionValidUntil)} asti</div>` : `<div class="med-info-row">📝 Reseptin voimassaoloa ei asetettu</div>`}
-
-        <div class="med-buttons">
-            ${kauppaNappi(m)}
-            <button class="btn-success" onclick="openNewPackage('${m.id}')">🆕 Aloita uusi pakkaus</button>
-            <button class="btn-rx" onclick="openNewPrescription('${m.id}')">📝 Aloita uusi resepti</button>
-        </div>
-    </div>`;
-}
-
-function renderAsNeededCard(m){
-    if(ui.editId === m.id) return renderEditForm(m);
-    if(ui.newRxId === m.id) return renderNewPrescriptionForm(m);
-
-    const rxDays = getPrescriptionDaysRemaining(m);
-    const remaining = getPrescriptionPackagesRemaining(m);
-
-    let cls = 'med-card asneeded-card';
-    if(rxDays !== null && rxDays <= thresholds.rxCriticalDays) cls += ' critical-package';
-    else if(rxDays !== null && rxDays <= thresholds.rxWarningDays) cls += ' warning-package';
-
-    return `<div class="${cls}">
-        <div class="med-header">
-            <h3>${m.name}</h3>
-            <div class="med-actions">
-                <button class="icon-btn" onclick="openEditMedicine('${m.id}')">✏️</button>
-                <button class="icon-btn" onclick="deleteMedicine('${m.id}')">🗑️</button>
-            </div>
-        </div>
-
-        ${m.prescriptionValidUntil ? `<div class="med-info-row">📝 Resepti voimassa ${formatDate(m.prescriptionValidUntil)} asti${rxDays!==null ? ' ('+rxDays+' pv)' : ''}</div>` : `<div class="med-info-row">📝 Reseptin voimassaoloa ei asetettu</div>`}
-
-        ${rxBadge(rxDays)}${refillBadge(m)}${kauppaBadge(m)}
-
-        <div class="med-buttons">
-            ${kauppaNappi(m)}
-            ${m.prescriptionTotalPackages ? `<button class="btn-secondary" onclick="logAsNeededPackage('${m.id}')">📦 Merkitse pakkaus ostetuksi (${remaining} jäljellä)</button>` : ''}
-            <button class="btn-rx" onclick="openNewPrescription('${m.id}')">📝 Aloita uusi resepti</button>
-        </div>
-    </div>`;
-}
-
-// ============================
-// RESEPTILISTAUS-NÄKYMÄ
-// ============================
-function renderPrescriptionsView(){
-    const meds = Object.values(data.medicines).filter(m => m.prescriptionValidUntil);
-    meds.sort((a,b) => new Date(a.prescriptionValidUntil) - new Date(b.prescriptionValidUntil));
-
-    let html = `<button class="btn-secondary" onclick="showDashboard()">← Takaisin</button>`;
-    html += `<h2 class="section-title" style="margin-top:18px;">📋 Reseptien voimassaolo</h2>`;
-
-    if(meds.length === 0){
-        html += `<div class="empty-state">Ei lääkkeitä, joilla on reseptin voimassaolopäivä asetettuna.</div>`;
-    } else {
-        html += `<div class="rx-list">`;
-        meds.forEach(m => {
-            const days = getPrescriptionDaysRemaining(m);
-            let cardCls = 'rx-card';
-            let chipCls = 'rx-days-chip';
-            if(days <= thresholds.rxCriticalDays){ cardCls += ' rx-critical'; chipCls += ' critical'; }
-            else if(days <= thresholds.rxWarningDays){ cardCls += ' rx-warning'; chipCls += ' warning'; }
-
-            const chipContent = days <= 0
-                ? `<span class="num">⚠️</span><span class="unit">vanhentunut</span>`
-                : `<span class="num">${days}</span><span class="unit">pv</span>`;
-
-            html += `<div class="${cardCls}">
-                <div class="rx-card-top">
-                    <h3>${m.name}</h3>
-                    <div class="${chipCls}">${chipContent}</div>
-                </div>
-                <div class="rx-card-date">📅 Resepti vanhenee ${formatDate(m.prescriptionValidUntil)}</div>
-                ${refillBadge(m)}
-            </div>`;
-        });
-        html += `</div>`;
-    }
-
-    document.getElementById('app').innerHTML = html;
-}
-
-// ============================
-// ASETUKSET-NÄKYMÄ (hälytysrajat)
-// ============================
-function renderSettingsView(){
-    const t = thresholds;
-    let html = `<button class="btn-secondary" onclick="showDashboard()">← Takaisin</button>`;
-    html += `<h2 class="section-title" style="margin-top:18px;">⚙️ Hälytysrajat</h2>`;
-    html += `<div class="form-card" style="background:#f0f8fb;border-color:#0B6E8C;">
-        <div class="hint" style="margin-bottom:14px;">Näiden rajojen mukaan sovellus näyttää keltaiset ja punaiset varoitukset. Muutokset näkyvät heti, mutta tallentuvat pysyvästi vasta kun painat Tallenna.</div>
-
-        <label for="setPkgWarn">📦 Pakkaus loppumassa (keltainen), päivää ennen loppumista</label>
-        <input type="number" id="setPkgWarn" min="0" step="1" value="${t.packageWarningDays}">
-
-        <label for="setPkgCrit">📦 Pakkaus loppuu pian (punainen), päivää ennen loppumista</label>
-        <input type="number" id="setPkgCrit" min="0" step="1" value="${t.packageCriticalDays}">
-
-        <label for="setRxWarn">📝 Resepti vanhenemassa (keltainen), päivää ennen vanhenemista</label>
-        <input type="number" id="setRxWarn" min="0" step="1" value="${t.rxWarningDays}">
-
-        <label for="setRxCrit">📝 Resepti vanhenee pian (punainen), päivää ennen vanhenemista</label>
-        <input type="number" id="setRxCrit" min="0" step="1" value="${t.rxCriticalDays}">
-
-        <div class="form-error" id="setError"></div>
-        <div class="form-buttons">
-            <button class="btn-secondary" onclick="resetThresholds()">Palauta oletukset</button>
-            <button class="btn-primary" onclick="saveThresholds()">Tallenna</button>
-        </div>
-    </div>`;
-    document.getElementById('app').innerHTML = html;
-}
-
-// ============================
-// RENDER
-// ============================
-function render(){
-    if(ui.view === 'prescriptions'){ renderPrescriptionsView(); return; }
-    if(ui.view === 'settings'){ renderSettingsView(); return; }
-
+// ============================================================
+//  KOJELAUTA
+// ============================================================
+function renderDashboard(){
     const allMeds = Object.entries(data.medicines).map(([id,m]) => ({ id, ...m }));
     const dailyMeds = allMeds.filter(m => (m.mode || 'daily') === 'daily');
     const asNeededMeds = allMeds.filter(m => m.mode === 'asNeeded');
@@ -1083,19 +1943,15 @@ function render(){
     });
 
     let html = '';
-
     if(legacyDataDetected && allMeds.length === 0){
-        html += `<div class="info-banner">ℹ️ Sovellus päivitettiin tukemaan useita lääkkeitä. Aiempaa yhden lääkkeen dataa ei voitu muuntaa automaattisesti (pakkauskoko ei ollut tiedossa) – lisää lääkkeesi uudelleen alta.</div>`;
+        html += `<div class="info-banner">ℹ️ Sovellus päivitettiin tukemaan useita lääkkeitä. Aiempaa yhden lääkkeen dataa ei voitu muuntaa automaattisesti – lisää lääkkeesi uudelleen alta.</div>`;
     }
 
     if(ui.addFormOpen){
         html += renderAddForm();
     } else {
-        html += `<button class="btn-primary" onclick="showAddMedicineForm()">➕ Lisää uusi lääke</button>`;
+        html += `<button class="btn btn-primary" onclick="showAddMedicineForm()">➕ Lisää uusi lääke</button>`;
     }
-
-    html += `<button class="btn-secondary" onclick="showPrescriptionsView()">📋 Reseptilistaus</button>`;
-    html += `<button class="btn-secondary" onclick="showSettingsView()">⚙️ Hälytysrajat</button>`;
 
     if(allMeds.length === 0){
         html += `<div class="empty-state">Ei vielä lisättyjä lääkkeitä.<br>Lisää ensimmäinen lääke yllä olevasta napista.</div>`;
@@ -1106,14 +1962,83 @@ function render(){
             html += `</div>`;
         }
         if(asNeededMeds.length){
-            html += `<h2 class="section-title">🕐 Tarvittaessa käytettävät (reseptiseuranta)</h2><div class="med-list">`;
+            html += `<h2 class="section-title">🕐 Tarvittaessa käytettävät</h2><div class="med-list">`;
             asNeededMeds.forEach(m => { html += renderAsNeededCard(m); });
             html += `</div>`;
         }
     }
-
     document.getElementById('app').innerHTML = html;
 }
+
+// ============================================================
+//  RENDER
+// ============================================================
+function render(){
+    document.querySelectorAll('.tabbar button').forEach(b => {
+        b.classList.toggle('on', b.dataset.tab === ui.view);
+    });
+
+    if(ui.view === 'prescriptions'){ renderPrescriptionsView(); return; }
+    if(ui.view === 'settings'){
+        if(!settingsUnlocked){ renderPinView(); return; }
+        renderSettingsView(); return;
+    }
+    renderDashboard();
+}
+
+document.querySelectorAll('.tabbar button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        if(ui.view === tab && tab === 'dashboard'){ window.scrollTo({ top:0, behavior:'smooth' }); return; }
+        ui.view = tab;
+        ui.addFormOpen = false; ui.editId = null; ui.newPackageId = null; ui.newRxId = null;
+        ui.pinInput = ''; ui.pinError = '';
+        if(tab === 'settings' && !ui.settingsSection) ui.settingsSection = 'ulkoasu';
+        render();
+        window.scrollTo({ top:0 });
+    });
+});
+
+applyTheme();
+
+// ============================================================
+//  SERVICE WORKER JA PÄIVITYKSET
+//  Worker rekisteröidään versionumeron kanssa, joten uusi julkaisu
+//  tunnistetaan aina. Sivua ei ladata uudelleen itsestään – siitä
+//  kerrotaan palkissa, jotta kesken oleva täyttö ei katoa alta.
+// ============================================================
+if('serviceWorker' in navigator){
+    window.addEventListener('load', async () => {
+        try {
+            const hadController = !!navigator.serviceWorker.controller;
+            const reg = await navigator.serviceWorker.register('./sw.js?v=' + APP_VERSION);
+
+            const kerroPaivityksesta = () => {
+                if(hadController) document.getElementById('updateBar').classList.add('show');
+            };
+            navigator.serviceWorker.addEventListener('controllerchange', kerroPaivityksesta);
+            reg.addEventListener('updatefound', () => {
+                const nw = reg.installing;
+                if(!nw) return;
+                nw.addEventListener('statechange', () => {
+                    if(nw.state === 'activated' || nw.state === 'installed') kerroPaivityksesta();
+                });
+            });
+
+            // Tarkistetaan päivitykset kun sovellus palaa näkyviin.
+            document.addEventListener('visibilitychange', () => {
+                if(!document.hidden) reg.update().catch(() => {});
+            });
+            setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
+        } catch(e){
+            console.warn('Service workerin rekisteröinti epäonnistui', e);
+        }
+    });
+}
+document.getElementById('updateNow').addEventListener('click', () => location.reload());
+document.getElementById('updateLater').addEventListener('click', () => {
+    document.getElementById('updateBar').classList.remove('show');
+});
 </script>
 </body>
 </html>

@@ -48,6 +48,15 @@
     --type-daily:#2563EB;      /* päivittäin käytettävä */
     --type-asneeded:#0F9E96;   /* tarvittaessa käytettävä */
 
+    /* Nappien värit ovat omia muuttujiaan, jotta jokaisen voi
+       vaihtaa asetuksista erikseen. Jokaisella on pari: tausta ja
+       sen päälle tuleva teksti. Arvot ovat aina kirjoitettuja
+       heksalukuja, koska asetusnäkymä lukee ne väriveistimeen. */
+    --btn-success:#1E8E4A;  --on-success:#FFFFFF;
+    --btn-rx:#FFF7E3;       --on-rx:#8A6100;  --btn-rx-border:#EAC45A;
+    --btn-cart:#FF9830;     --on-cart:#1A1A1A;
+    --btn-secondary:#FFFFFF; --on-secondary:#152730;
+
     /* Pyöristykset: vain kolme kokoa koko sovelluksessa */
     --r-btn:10px;
     --r-card:16px;
@@ -70,6 +79,7 @@ body[data-theme="metsa"]{
     --border:#DEE8DF; --border-strong:#C6D6C8;
     --brand-text:hsl(var(--h) 58% 25%);
     --brand-soft:hsl(var(--h) 45% 95%);
+    --btn-secondary:#FFFFFF; --on-secondary:#1A2A20;
 }
 body[data-theme="hiekka"]{
     --bg:#F4EFE5; --surface:#FFFDF8; --surface-2:#F9F5EC;
@@ -77,6 +87,9 @@ body[data-theme="hiekka"]{
     --border:#E7DCC9; --border-strong:#D6C7AC;
     --brand-text:hsl(var(--h) 62% 28%);
     --brand-soft:hsl(var(--h) 55% 95%);
+    --btn-success:#3F7D4E;
+    --btn-cart:#D98A3A; --on-cart:#FFFFFF;
+    --btn-secondary:#FFFDF8; --on-secondary:#2B2318;
 }
 body[data-theme="yo"]{
     --bg:#0F151A; --surface:#19222A; --surface-2:#212C35;
@@ -90,6 +103,12 @@ body[data-theme="yo"]{
     --danger:#FF9B91; --danger-bg:#2E1B1A; --danger-border:#7A3B37;
     --ok:#4ADE80;
     --type-daily:#60A5FA; --type-asneeded:#2DD4BF;
+    /* Tummassa teemassa kirkkaat napit hohtavat, joten oletukset
+       ovat vaimeampia kuin vaaleissa teemoissa. */
+    --btn-success:#2F8F57;  --on-success:#FFFFFF;
+    --btn-rx:#2A2415;       --on-rx:#F2C14E;  --btn-rx-border:#6B5A22;
+    --btn-cart:#C2712A;     --on-cart:#FFFFFF;
+    --btn-secondary:#212C35; --on-secondary:#E9EFF3;
     --sh-1:0 1px 2px rgba(0,0,0,.4);
     --sh-2:0 10px 28px rgba(0,0,0,.55);
 }
@@ -105,6 +124,10 @@ body[data-theme="kontrasti"]{
     --danger:#FF6B6B; --danger-bg:#000; --danger-border:#FF6B6B;
     --ok:#4ADE80;
     --type-daily:#82B4FF; --type-asneeded:#4FE3D6;
+    --btn-success:#4ADE80;  --on-success:#00220E;
+    --btn-rx:#000000;       --on-rx:#FFD400;  --btn-rx-border:#FFD400;
+    --btn-cart:#FF9830;     --on-cart:#1A1A1A;
+    --btn-secondary:#000000; --on-secondary:#FFFFFF;
     --bw:2.5px;
     --sh-1:none; --sh-2:none;
 }
@@ -145,11 +168,11 @@ h1{
 }
 .btn:active{transform:scale(.985)}
 .btn-primary{background:var(--brand);color:var(--on-brand)}
-.btn-success{background:var(--ok);color:#fff}
-.btn-secondary{background:var(--surface);color:var(--text);border-color:var(--border-strong);font-size:.9rem}
+.btn-success{background:var(--btn-success);color:var(--on-success)}
+.btn-secondary{background:var(--btn-secondary);color:var(--on-secondary);border-color:var(--border-strong);font-size:.9rem}
 .btn-danger{background:var(--danger);color:#fff}
-.btn-rx{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-border)}
-.btn-cart{background:#FF9830;color:#1a1a1a}
+.btn-rx{background:var(--btn-rx);color:var(--on-rx);border-color:var(--btn-rx-border)}
+.btn-cart{background:var(--btn-cart);color:var(--on-cart)}
 .btn-cart:disabled{opacity:.55;cursor:default}
 .btn:disabled{cursor:default}
 .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.9rem}
@@ -212,8 +235,12 @@ input:focus{border-color:var(--brand);box-shadow:0 0 0 3px hsl(var(--h) 70% 45% 
     color:var(--on-brand);border-color:transparent;border-left-color:rgba(255,255,255,.55);
     box-shadow:var(--sh-2);
 }
-.med-card.warning-package:not(.hero){border-color:var(--warn-border);background:var(--warn-bg)}
-.med-card.critical-package:not(.hero){border-color:var(--danger-border);background:var(--danger-bg)}
+/* Tilan korostus on kolmiportainen. Vasen reuna jätetään aina
+   rauhaan, koska se kertoo lääkkeen tyypin. */
+.med-card.st-warn{border-top-color:var(--warn-border);border-right-color:var(--warn-border);border-bottom-color:var(--warn-border)}
+.med-card.st-crit{border-top-color:var(--danger-border);border-right-color:var(--danger-border);border-bottom-color:var(--danger-border)}
+.med-card.st-warn.fill:not(.hero){background:var(--warn-bg)}
+.med-card.st-crit.fill:not(.hero){background:var(--danger-bg)}
 .med-header{display:flex;justify-content:space-between;align-items:flex-start;gap:.6rem;margin-bottom:.3rem}
 .med-header h3{font-size:1.12rem;color:var(--brand-text);flex:1 1 auto;min-width:0;overflow-wrap:break-word}
 .med-card.hero .med-header h3{color:var(--on-brand)}
@@ -276,6 +303,32 @@ input:focus{border-color:var(--brand);box-shadow:0 0 0 3px hsl(var(--h) 70% 45% 
 .pkg-form-header h3{font-size:1.2rem;font-weight:800;overflow-wrap:break-word}
 .pkg-form-body{padding:var(--pad)}
 .pkg-form-row{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+
+/* ---------- Kategoriasuodatin ---------- */
+.filter-row{display:flex;gap:.4rem;margin:.15rem 0 .9rem}
+.fchip{
+    flex:1;padding:.55rem .3rem;border-radius:var(--r-pill);
+    border:var(--bw) solid var(--border-strong);background:var(--surface);
+    color:var(--text-soft);font-size:.78rem;font-weight:700;line-height:1.25;
+}
+.fchip.on{background:var(--brand);color:var(--on-brand);border-color:var(--brand)}
+.fchip .n{opacity:.75;font-weight:600}
+
+/* ---------- Väriveistimet ---------- */
+.color-row{display:flex;align-items:center;gap:.7rem;padding:.55rem 0;border-bottom:1px solid var(--border)}
+.color-row:last-of-type{border-bottom:none}
+.color-row .lbl{flex:1;font-size:.88rem}
+.color-row .lbl small{display:block;color:var(--text-faint);font-size:.72rem;margin-top:.1rem}
+.color-row input[type=color]{
+    flex-shrink:0;width:2.8rem;height:2.1rem;padding:0;border-radius:var(--r-btn);
+    border:var(--bw) solid var(--border-strong);background:none;cursor:pointer;
+}
+.color-row .reset{
+    flex-shrink:0;font-size:.72rem;font-weight:700;color:var(--text-faint);
+    padding:.35rem .45rem;border-radius:var(--r-btn);border:var(--bw) solid var(--border);
+}
+.color-row .reset.hidden{visibility:hidden}
+.own-flag{font-size:.68rem;color:var(--brand-text);font-weight:700}
 
 /* ---------- Osiot ja tilat ---------- */
 .section-title{font-size:.8rem;color:var(--text-faint);letter-spacing:.04em;margin:1.3rem 0 .6rem;font-weight:800}
@@ -483,7 +536,7 @@ import {
 //  numeron muuttaminen pakottaa selaimen hakemaan uuden workerin
 //  eikä välimuistiin voi jäädä vanhaa versiota roikkumaan.
 // ============================================================
-const APP_VERSION = '2026.09.11';
+const APP_VERSION = '2026.09.11-2';
 
 const firebaseConfig = {
     apiKey: "AIzaSyDswdEF9J0gsHJH6Zo_8BGZrf8DVG3FwYc",
@@ -518,6 +571,9 @@ const DEFAULT_SETTINGS = {
     accentHue: 194,
     textScale: 1,
     density: 'normal',
+    cardHighlight: 'ei',      // 'ei' | 'reuna' | 'taysi'
+    // Tyhjä arvo tarkoittaa että teeman oma väri on käytössä.
+    colors: { bg:'', surface:'', text:'', brand:'', success:'', rx:'', cart:'', secondary:'' },
     cardFields: { pkgInfo:true, startDate:true, endDate:true, rx:true, badges:true, cart:true },
     defaults: { packageSize:'', dosePerDay:'', rxYears:2 }
 };
@@ -543,6 +599,7 @@ function cloneSettings(s){
     return {
         ...DEFAULT_SETTINGS,
         ...s,
+        colors:     { ...DEFAULT_SETTINGS.colors,     ...((s && s.colors)     || {}) },
         cardFields: { ...DEFAULT_SETTINGS.cardFields, ...((s && s.cardFields) || {}) },
         defaults:   { ...DEFAULT_SETTINGS.defaults,   ...((s && s.defaults)   || {}) }
     };
@@ -563,7 +620,7 @@ let pendingImport = null;       // tuotavat tiedot odottamassa vahvistusta
 let ui = {
     view:'dashboard', addFormOpen:false, addFormMode:'daily',
     editId:null, editFormMode:null, newPackageId:null, newRxId:null,
-    settingsSection:'ulkoasu', pinInput:'', pinError:''
+    settingsSection:'ulkoasu', pinInput:'', pinError:'', medFilter:'all'
 };
 
 // ============================================================
@@ -622,7 +679,39 @@ function readableBrand(h, s, l){
     return { rgb, ink: readableInkFor(rgb) };
 }
 function rgbToHex([r,g,b]){
-    return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+    return '#' + [r,g,b].map(v => Math.round(v).toString(16).padStart(2,'0')).join('');
+}
+function hexToRgb(hex){
+    let h = String(hex || '').trim().replace('#','');
+    if(h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    if(!/^[0-9a-f]{6}$/i.test(h)) return null;
+    return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
+// Kahden värin sekoitus. t = 0 antaa ensimmäisen, t = 1 toisen.
+function mixRgb(a, b, t){
+    return [0,1,2].map(i => Math.round(a[i] + (b[i] - a[i]) * t));
+}
+// Siirtää väriä vaaleampaan tai tummempaan suuntaan kunnes se erottuu
+// taustastaan. Käytetään omille väreille: kun valitset vaikka tumman
+// korostusvärin vaalealle taustalle, otsikot pysyvät silti luettavina.
+function shiftUntilReadable(rgb, bgRgb, target){
+    const bgLum = relativeLuminance(bgRgb);
+    const towards = bgLum < 0.5 ? [255,255,255] : [0,0,0];
+    let cur = rgb.slice(), guard = 0;
+    while(contrastRatio(relativeLuminance(cur), bgLum) < (target || 4.5) && guard++ < 40){
+        cur = mixRgb(cur, towards, 0.08);
+    }
+    return cur;
+}
+// Lukee voimassa olevan värin CSS-muuttujasta heksalukuna, jotta
+// väriveistin avautuu nykyisessä värissä eikä mustassa.
+function cssHex(name){
+    const raw = getComputedStyle(document.body).getPropertyValue(name).trim();
+    const rgb = hexToRgb(raw);
+    if(rgb) return rgbToHex(rgb);
+    const m = raw.match(/rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)/);
+    if(m) return rgbToHex([+m[1], +m[2], +m[3]]);
+    return '#808080';
 }
 
 // ============================================================
@@ -656,6 +745,79 @@ function applyTheme(){
 
     const meta = document.getElementById('themeColorMeta');
     if(meta) meta.setAttribute('content', rgbToHex(brand.rgb));
+
+    applyCustomColors();
+}
+
+// ============================================================
+//  OMAT VÄRIT
+//  Nämä kirjoitetaan teeman päälle. Jokaisesta valitusta väristä
+//  johdetaan myös sen lähisukulaiset: taustasta reunaviivat,
+//  tekstistä haaleammat tekstit ja napeista niiden tekstin väri.
+//  Mitään väriparia ei tarvitse valita käsin.
+// ============================================================
+function applyCustomColors(){
+    const b = document.body.style;
+    const c = settings.colors || {};
+    const th = THEMES[settings.theme] || THEMES.meri;
+
+    // Nollataan aiemmat omat värit, jotta teeman poistuessa
+    // vanha valinta ei jää roikkumaan.
+    ['--bg','--surface','--surface-2','--border','--border-strong',
+     '--text','--text-soft','--text-faint','--brand-text','--brand-soft',
+     '--btn-success','--on-success','--btn-rx','--on-rx','--btn-rx-border',
+     '--btn-cart','--on-cart','--btn-secondary','--on-secondary'
+    ].forEach(k => b.removeProperty(k));
+
+    const bgRgb   = hexToRgb(c.bg);
+    const surfRgb = hexToRgb(c.surface);
+    const textRgb = hexToRgb(c.text);
+    const brandRgb = hexToRgb(c.brand);
+
+    // Jos omia värejä ei ole valittu, lopetetaan tähän. Näin
+    // korostusvärin liukusäädin ei joudu lukemaan laskettuja
+    // tyylejä jokaisella pikselillä.
+    if(!Object.values(c).some(Boolean)) return;
+
+    // Vertailuväreinä käytetään omaa valintaa jos sellainen on,
+    // muuten teeman oletusta.
+    const surfRef = surfRgb || hexToRgb(cssHex('--surface')) || (th.dark ? [25,34,42] : [255,255,255]);
+    const textRef = textRgb || hexToRgb(cssHex('--text'))    || (th.dark ? [233,239,243] : [21,39,48]);
+
+    if(bgRgb) b.setProperty('--bg', rgbToHex(bgRgb));
+
+    if(surfRgb){
+        b.setProperty('--surface', rgbToHex(surfRgb));
+        b.setProperty('--surface-2', rgbToHex(mixRgb(surfRgb, textRef, 0.07)));
+        b.setProperty('--border', rgbToHex(mixRgb(surfRgb, textRef, 0.20)));
+        b.setProperty('--border-strong', rgbToHex(mixRgb(surfRgb, textRef, 0.34)));
+    }
+    if(textRgb){
+        b.setProperty('--text', rgbToHex(textRgb));
+        b.setProperty('--text-soft', rgbToHex(mixRgb(textRgb, surfRef, 0.30)));
+        b.setProperty('--text-faint', rgbToHex(mixRgb(textRgb, surfRef, 0.48)));
+    }
+    if(brandRgb){
+        b.setProperty('--brand', rgbToHex(brandRgb));
+        b.setProperty('--on-brand', readableInkFor(brandRgb));
+        const brand2 = mixRgb(brandRgb, th.dark ? [255,255,255] : [0,0,0], 0.16);
+        b.setProperty('--brand-2', rgbToHex(brand2));
+        b.setProperty('--on-brand-2', readableInkFor(brand2));
+        b.setProperty('--brand-text', rgbToHex(shiftUntilReadable(brandRgb, surfRef, 4.5)));
+        b.setProperty('--brand-soft', rgbToHex(mixRgb(surfRef, brandRgb, 0.14)));
+    }
+
+    const nappi = (hexValue, bgVar, inkVar, extraVar) => {
+        const rgb = hexToRgb(hexValue);
+        if(!rgb) return;
+        b.setProperty(bgVar, rgbToHex(rgb));
+        b.setProperty(inkVar, readableInkFor(rgb));
+        if(extraVar) b.setProperty(extraVar, rgbToHex(rgb));
+    };
+    nappi(c.success,   '--btn-success',   '--on-success');
+    nappi(c.rx,        '--btn-rx',        '--on-rx', '--btn-rx-border');
+    nappi(c.cart,      '--btn-cart',      '--on-cart');
+    nappi(c.secondary, '--btn-secondary', '--on-secondary');
 }
 
 // ============================================================
@@ -1370,10 +1532,12 @@ function renderMedCard(m, isHero){
     const hasPackageInfo = packageDays !== null;
 
     let cls = 'med-card';
-    if(isHero && hasPackageInfo) cls += ' hero';
-    if(hasPackageInfo){
-        if(packageDays <= settings.packageCriticalDays) cls += ' critical-package';
-        else if(packageDays <= settings.packageWarningDays) cls += ' warning-package';
+    const hl = settings.cardHighlight || 'ei';
+    if(hl === 'taysi' && isHero && hasPackageInfo) cls += ' hero';
+    if(hl !== 'ei' && hasPackageInfo){
+        const fill = hl === 'taysi' ? ' fill' : '';
+        if(packageDays <= settings.packageCriticalDays) cls += ' st-crit' + fill;
+        else if(packageDays <= settings.packageWarningDays) cls += ' st-warn' + fill;
     }
 
     const endText = (f.endDate && packageEnd) ? ` (loppuu noin ${formatDate(packageEnd)})` : '';
@@ -1422,8 +1586,12 @@ function renderAsNeededCard(m){
     const remaining = getPrescriptionPackagesRemaining(m);
 
     let cls = 'med-card asneeded-card';
-    if(rxDays !== null && rxDays <= settings.rxCriticalDays) cls += ' critical-package';
-    else if(rxDays !== null && rxDays <= settings.rxWarningDays) cls += ' warning-package';
+    const hl = settings.cardHighlight || 'ei';
+    if(hl !== 'ei' && rxDays !== null){
+        const fill = hl === 'taysi' ? ' fill' : '';
+        if(rxDays <= settings.rxCriticalDays) cls += ' st-crit' + fill;
+        else if(rxDays <= settings.rxWarningDays) cls += ' st-warn' + fill;
+    }
 
     return `<div class="${cls}">
         <div class="med-header">
@@ -1551,6 +1719,26 @@ window.previewHue = (v) => {
 window.commitHue = () => saveSettingsSoon();
 window.setTextScale = (v) => { settings.textScale = +v; applyTheme(); render(); saveSettingsSoon(); };
 window.setDensity = (v) => { settings.density = v; applyTheme(); render(); saveSettingsSoon(); };
+window.setCardHighlight = (v) => { settings.cardHighlight = v; render(); saveSettingsSoon(); };
+
+// Väriveistin päivittää värin heti mutta piirtää näkymän uusiksi
+// vasta kun valinta on valmis, jotta veistin ei sulkeudu kesken.
+window.previewColor = (key, value) => {
+    settings.colors[key] = value;
+    applyTheme();
+};
+window.commitColor = (key, value) => {
+    settings.colors[key] = value;
+    applyTheme(); render(); saveSettingsSoon();
+};
+window.resetColor = (key) => {
+    settings.colors[key] = '';
+    applyTheme(); render(); saveSettingsSoon();
+};
+window.resetAllColors = () => {
+    Object.keys(settings.colors).forEach(k => settings.colors[k] = '');
+    applyTheme(); render(); saveSettingsSoon();
+};
 window.toggleCardField = (k) => {
     settings.cardFields[k] = !settings.cardFields[k];
     render(); saveSettingsSoon();
@@ -1722,9 +1910,12 @@ function group(key, icon, title, body){
 }
 
 function themePreview(){
+    const hl = settings.cardHighlight || 'ei';
+    const heroCls = hl === 'taysi' ? 'med-card hero' : 'med-card';
+    const varoitus = hl === 'ei' ? '' : (hl === 'taysi' ? ' st-warn fill' : ' st-warn');
     return `<div class="preview">
         <div class="plabel">Esikatselu</div>
-        <div class="med-card hero" style="margin-bottom:.5rem">
+        <div class="${heroCls}" style="margin-bottom:.5rem">
             <div class="med-header">
                 <div style="flex:1;min-width:0">
                     <span class="type-chip">💊 Päivittäin</span>
@@ -1734,8 +1925,13 @@ function themePreview(){
             <div class="med-days-number">12</div>
             <div class="med-days-label">päivää lääkettä jäljellä</div>
             <span class="badge badge-neutral">🧾 Reseptillä jäljellä 2 pakkausta</span>
+            <div class="med-buttons">
+                <button class="btn btn-cart" type="button">🛒 Lisää kauppalistaan</button>
+                <button class="btn btn-success" type="button">🆕 Aloita uusi pakkaus</button>
+                <button class="btn btn-rx" type="button" style="margin-bottom:0">📝 Aloita uusi resepti</button>
+            </div>
         </div>
-        <div class="med-card asneeded-card" style="margin-bottom:0">
+        <div class="med-card asneeded-card${varoitus}" style="margin-bottom:0">
             <div class="med-header">
                 <div style="flex:1;min-width:0">
                     <span class="type-chip asneeded">🕐 Tarvittaessa</span>
@@ -1766,6 +1962,28 @@ function renderSettingsView(){
         `<button class="${Math.abs((t.textScale||1) - s.v) < 0.01 ? 'on' : ''}" onclick="setTextScale(${s.v})">A</button>`
     ).join('');
 
+    const omatVarit = [
+        ['bg',        'Sovelluksen tausta', 'Sivun pohjaväri',            '--bg'],
+        ['surface',   'Korttien tausta',    'Lääkekorttien ja lomakkeiden pohja', '--surface'],
+        ['text',      'Tekstin väri',       'Haaleammat tekstit johdetaan tästä', '--text'],
+        ['brand',     'Korostusväri',       'Otsikot ja päänapit',        '--brand'],
+        ['success',   'Uusi pakkaus -nappi', '',                          '--btn-success'],
+        ['rx',        'Uusi resepti -nappi', '',                          '--btn-rx'],
+        ['cart',      'Kauppalista-nappi',   '',                          '--btn-cart'],
+        ['secondary', 'Toissijainen nappi',  'Peruuta ja muut harmaat napit', '--btn-secondary']
+    ].map(([key, nimi, selite, cssVar]) => {
+        const oma = settings.colors[key];
+        const arvo = oma || cssHex(cssVar);
+        return `<div class="color-row">
+            <div class="lbl">${nimi}${oma ? ' <span class="own-flag">oma</span>' : ''}${selite ? `<small>${selite}</small>` : ''}</div>
+            <button class="reset ${oma ? '' : 'hidden'}" onclick="resetColor('${key}')">palauta</button>
+            <input type="color" value="${arvo}" aria-label="${esc(nimi)}"
+                   oninput="previewColor('${key}',this.value)" onchange="commitColor('${key}',this.value)">
+        </div>`;
+    }).join('');
+
+    const omiaValittu = Object.values(settings.colors).filter(Boolean).length;
+
     const ulkoasu = `
         <label style="margin-top:1rem">Teema</label>
         <div class="theme-grid">${themeBtns}</div>
@@ -1775,7 +1993,20 @@ function renderSettingsView(){
         <div class="hue-track"></div>
         <input type="range" min="0" max="360" step="1" value="${t.accentHue}"
                oninput="previewHue(this.value)" onchange="commitHue()" aria-label="Korostusväri">
-        <div class="hint">Sävy: <span id="hueValue">${Math.round(t.accentHue)}°</span> — tekstin väri vaihtuu automaattisesti luettavaksi.</div>
+        <div class="hint">Sävy: <span id="hueValue">${Math.round(t.accentHue)}°</span>${settings.colors.brand ? ' — oma korostusväri on valittuna, joten säädin ei vaikuta.' : ' — tekstin väri vaihtuu automaattisesti luettavaksi.'}</div>
+
+        <label style="margin-top:1.1rem">Omat värit</label>
+        <div class="hint" style="margin-bottom:.3rem">Nämä korvaavat teeman värit. Tekstin väri jokaisen napin päällä lasketaan automaattisesti, joten teksti pysyy luettavana valitsit minkä värin tahansa.</div>
+        ${omatVarit}
+        ${omiaValittu ? `<button class="btn btn-secondary" style="margin-top:.7rem" onclick="resetAllColors()">Palauta kaikki teeman värit (${omiaValittu} omaa)</button>` : ''}
+
+        <label style="margin-top:1.1rem">Korttien korostus</label>
+        <div class="hint" style="margin-bottom:.3rem">Näytetäänkö loppumassa olevat lääkkeet muista poikkeavina.</div>
+        <div class="scale-row">
+            <button class="${(t.cardHighlight||'ei')==='ei'?'on':''}" onclick="setCardHighlight('ei')" style="font-size:.78rem">Kaikki samanlaisia</button>
+            <button class="${t.cardHighlight==='reuna'?'on':''}" onclick="setCardHighlight('reuna')" style="font-size:.78rem">Reunaväri</button>
+            <button class="${t.cardHighlight==='taysi'?'on':''}" onclick="setCardHighlight('taysi')" style="font-size:.78rem">Täysi väritys</button>
+        </div>
 
         <label style="margin-top:1.1rem">Tekstin koko</label>
         <div class="scale-row">${scaleBtns}</div>
@@ -1953,22 +2184,41 @@ function renderDashboard(){
         html += `<button class="btn btn-primary" onclick="showAddMedicineForm()">➕ Lisää uusi lääke</button>`;
     }
 
+    // Kategoriasuodatin. Näkyy vasta kun molempia tyyppejä on olemassa,
+    // jottei yhden lääkkeen listan päällä ole turhaa valikkoa.
+    const suodatin = ui.medFilter || 'all';
+    if(dailyMeds.length && asNeededMeds.length){
+        html += `<div class="filter-row">
+            <button class="fchip ${suodatin==='all'?'on':''}" onclick="setMedFilter('all')">Kaikki <span class="n">${allMeds.length}</span></button>
+            <button class="fchip ${suodatin==='daily'?'on':''}" onclick="setMedFilter('daily')">💊 Päivittäin <span class="n">${dailyMeds.length}</span></button>
+            <button class="fchip ${suodatin==='asNeeded'?'on':''}" onclick="setMedFilter('asNeeded')">🕐 Tarvittaessa <span class="n">${asNeededMeds.length}</span></button>
+        </div>`;
+    }
+
+    const naytaPaivittain = suodatin !== 'asNeeded';
+    const naytaTarvittaessa = suodatin !== 'daily';
+    const yksiRyhma = suodatin !== 'all';
+
     if(allMeds.length === 0){
         html += `<div class="empty-state">Ei vielä lisättyjä lääkkeitä.<br>Lisää ensimmäinen lääke yllä olevasta napista.</div>`;
     } else {
-        if(dailyMeds.length){
-            html += `<h2 class="section-title">💊 Päivittäin käytettävät</h2><div class="med-list">`;
+        if(dailyMeds.length && naytaPaivittain){
+            if(!yksiRyhma) html += `<h2 class="section-title">💊 Päivittäin käytettävät</h2>`;
+            html += `<div class="med-list">`;
             dailyMeds.forEach((m, idx) => { html += renderMedCard(m, idx === 0 && !ui.addFormOpen); });
             html += `</div>`;
         }
-        if(asNeededMeds.length){
-            html += `<h2 class="section-title">🕐 Tarvittaessa käytettävät</h2><div class="med-list">`;
+        if(asNeededMeds.length && naytaTarvittaessa){
+            if(!yksiRyhma) html += `<h2 class="section-title">🕐 Tarvittaessa käytettävät</h2>`;
+            html += `<div class="med-list">`;
             asNeededMeds.forEach(m => { html += renderAsNeededCard(m); });
             html += `</div>`;
         }
     }
     document.getElementById('app').innerHTML = html;
 }
+
+window.setMedFilter = (v) => { ui.medFilter = v; render(); window.scrollTo({ top:0 }); };
 
 // ============================================================
 //  RENDER

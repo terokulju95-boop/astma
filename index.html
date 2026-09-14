@@ -555,7 +555,7 @@ import {
 //  numeron muuttaminen pakottaa selaimen hakemaan uuden workerin
 //  eikä välimuistiin voi jäädä vanhaa versiota roikkumaan.
 // ============================================================
-const APP_VERSION = '2026.09.11-7';
+const APP_VERSION = '2026.09.14';
 
 const firebaseConfig = {
     apiKey: "AIzaSyDswdEF9J0gsHJH6Zo_8BGZrf8DVG3FwYc",
@@ -593,9 +593,10 @@ const DEFAULT_SETTINGS = {
     cardHighlight: 'ei',      // 'ei' | 'reuna' | 'taysi'
     showAllFilter: false,     // näytetäänkö Kaikki-nappi suodattimessa
     showSearch: true,         // näytetäänkö hakukenttä etusivulla
+    countTodayTaken: true,    // lasketaanko kuluvan päivän annos jo otetuksi
     // Tyhjä arvo tarkoittaa että teeman oma väri on käytössä.
     colors: { bg:'', surface:'', text:'', brand:'', success:'', rx:'', cart:'', secondary:'' },
-    cardFields: { pkgInfo:true, startDate:true, endDate:true, rx:true, badges:true, cart:true, form:true },
+    cardFields: { pkgInfo:true, startDate:true, endDate:true, rx:true, badges:true, cart:true, form:true, pillsLeft:true },
     defaults: { packageSize:'', dosePerDay:'', rxYears:2 }
 };
 
@@ -674,7 +675,7 @@ let ui = {
     addForm:'pilleri', addTrack:true, addRxType:'packages', addRxUnit:'v', draft:{},
     editId:null, editFormMode:null, editForm:null, editTrack:null,
     editRxType:null, editRxUnit:null, editDraft:{},
-    newPackageId:null, newRxId:null, newRxType:null, newRxUnit:null, newRxDraft:{},
+    newPackageId:null, newRxId:null, newRxType:null, newRxUnit:null, newRxDraft:{}, adjustId:null,
     settingsSection:'ulkoasu', pinInput:'', pinError:'', medFilter:null, search:''
 };
 
@@ -972,7 +973,7 @@ async function loadFromFirebase(){
 }
 
 function formIsOpen(){
-    return !!(ui.addFormOpen || ui.editId || ui.newPackageId || ui.newRxId);
+    return !!(ui.addFormOpen || ui.editId || ui.newPackageId || ui.newRxId || ui.adjustId);
 }
 // Uudelleenpiirto veisi kohdistuksen hakukentästä kesken kirjoittamisen,
 // joten toisen laitteen muutos odottaa siihen asti kunnes haku on ohi.
@@ -1177,13 +1178,37 @@ function tracksDoses(m){
     return formInfo(m).track;
 }
 
+// Pakkauksen kokonaiskesto päivinä. packageAdjust on käsin tehty
+// korjaus: plussaa jos purkissa oli pillereitä yli, miinusta jos alle.
+function packageTotalDays(m){
+    const koko = (m.packageSize || 0) + (m.packageAdjust || 0);
+    if(!m.dosePerDay || m.dosePerDay <= 0) return 0;
+    return Math.floor(koko / m.dosePerDay);
+}
+
+// Viimeinen päivä jolloin purkissa on vielä annos.
+//
+// 60 pilleriä, 1 per päivä, aloitus 14.9.: ensimmäinen pilleri otetaan
+// aloituspäivänä, joten kuudeskymmenes otetaan 12.11. eikä 13.11.
+// Siksi kestosta vähennetään yksi päivä. Asetus countTodayTaken
+// määrää lasketaanko kuluvan päivän annos jo otetuksi.
 function getPackageEndDate(m){
     // Tahnalle ja voiteelle riittoa ei lasketa, jolloin kortissa ei
     // näy päivälukua eikä pakkausvaroituksia.
     if(!tracksDoses(m)) return null;
     if(!m.packageSize || !m.dosePerDay || !m.startDate) return null;
-    const totalDays = Math.floor(m.packageSize / m.dosePerDay);
-    return addDaysToDate(m.startDate, totalDays);
+    const vahennys = settings.countTodayTaken === false ? 0 : 1;
+    return addDaysToDate(m.startDate, packageTotalDays(m) - vahennys);
+}
+
+// Montako annosta purkissa on nyt jäljellä. Tätä käytetään sekä
+// kortin tiedoissa että käsin tehtävän korjauksen pohjana.
+function getPackagePillsRemaining(m){
+    if(!tracksDoses(m)) return null;
+    if(!m.packageSize || !m.dosePerDay || !m.startDate) return null;
+    const kulunut = -daysFromToday(m.startDate);          // päiviä aloituksesta
+    const otettu = m.dosePerDay * (kulunut + (settings.countTodayTaken === false ? 0 : 1));
+    return (m.packageSize + (m.packageAdjust || 0)) - otettu;
 }
 function getPackageDaysRemaining(m){
     const end = getPackageEndDate(m);
@@ -1491,9 +1516,17 @@ window.saveEditMedicine = async (id) => {
         const startRaw = document.getElementById('editStart_'+id).value;
         const size = sizeRaw ? parseFloat(sizeRaw) : null;
         const dose = doseRaw ? parseFloat(doseRaw) : null;
-        m.packageSize = (size && size > 0) ? size : null;
-        m.dosePerDay  = (dose && dose > 0) ? dose : null;
-        m.startDate   = startRaw || ((m.packageSize && m.dosePerDay) ? getTodayString() : null);
+        const uusiKoko = (size && size > 0) ? size : null;
+        const uusiAnnos = (dose && dose > 0) ? dose : null;
+        const uusiAlku = startRaw || ((uusiKoko && uusiAnnos) ? getTodayString() : null);
+        // Jos määriä tai aloituspäivää muutetaan, aiempi käsin tehty
+        // korjaus ei enää päde, joten se nollataan.
+        if(uusiKoko !== m.packageSize || uusiAnnos !== m.dosePerDay || uusiAlku !== m.startDate){
+            m.packageAdjust = 0;
+        }
+        m.packageSize = uusiKoko;
+        m.dosePerDay  = uusiAnnos;
+        m.startDate   = uusiAlku;
     } else if(mode === 'daily'){
         const startEl = document.getElementById('editStart_'+id);
         // Määrät jätetään tallentamatta mutta ei pyyhitä, jotta
@@ -1537,6 +1570,9 @@ window.saveNewPackage = async (id) => {
         if(!dose || dose <= 0){ err.textContent = 'Anna annos päivässä (yli 0).'; return; }
         m.packageSize = size; m.dosePerDay = dose;
     }
+    // Uusi purkki aloittaa puhtaalta pöydältä, joten vanha käsin
+    // tehty korjaus ei saa jäädä voimaan.
+    m.packageAdjust = 0;
 
     // Reseptin laskuri kasvaa sen mukaan miten määrä on kirjattu:
     // pakkausmääräiseen lisätään pakkaus, määräiseen pakkauksen
@@ -1799,6 +1835,67 @@ function renderEditForm(m){
     </div>`;
 }
 
+// ============================================================
+//  PURKIN MÄÄRÄN KORJAUS
+//  Laskenta olettaa täydellisen annostelun. Väliin jäänyt annos,
+//  edellisestä purkista ylijääneet pillerit tai apteekin eri
+//  pakkauskoko saa luvun valumaan pikkuhiljaa väärään suuntaan.
+//  Tällä lasketaan purkki ja kerrotaan todellinen määrä.
+// ============================================================
+window.openAdjust = (id) => {
+    ui.adjustId = id;
+    ui.addFormOpen = false; ui.editId = null; ui.newPackageId = null; ui.newRxId = null;
+    render();
+};
+window.cancelAdjust = () => { ui.adjustId = null; render(); };
+
+window.saveAdjust = async (id) => {
+    const m = data.medicines[id]; if(!m) return;
+    const el  = document.getElementById('adj_'+id);
+    const err = document.getElementById('adjError_'+id);
+    const arvo = el && el.value !== '' ? parseFloat(el.value) : NaN;
+
+    if(isNaN(arvo) || arvo < 0){ err.textContent = 'Anna jäljellä oleva määrä (0 tai enemmän).'; return; }
+
+    const laskettu = getPackagePillsRemaining(m);
+    if(laskettu === null){ err.textContent = 'Purkin tietoja puuttuu.'; return; }
+
+    // Korjaus tallennetaan erotuksena, jolloin pakkauskoko säilyy
+    // oikeana tietona eikä kortin teksti muutu harhaanjohtavaksi.
+    m.packageAdjust = (m.packageAdjust || 0) + (arvo - laskettu);
+
+    ui.adjustId = null;
+    await saveData(); render();
+};
+
+function renderAdjustForm(m){
+    const fi = formInfo(m);
+    const laskettu = getPackagePillsRemaining(m);
+    const nyt = laskettu === null ? '' : Math.max(0, laskettu);
+    const paivat = getPackageDaysRemaining(m);
+    return `<div class="pkg-form-card">
+        <div class="pkg-form-header">
+            <span class="pkg-form-tag">🔢 KORJAA MÄÄRÄ</span>
+            <h3>${esc(m.name)}</h3>
+        </div>
+        <div class="pkg-form-body">
+            <div class="hint" style="margin-bottom:.6rem">Sovellus arvioi että purkissa on nyt <b>${nyt} ${esc(fi.unit)}</b> (${paivat} pv). Laske purkki ja kirjoita todellinen määrä, niin laskenta korjautuu.</div>
+
+            <label for="adj_${m.id}">${fi.unit.charAt(0).toUpperCase()+fi.unit.slice(1)} purkissa nyt</label>
+            <input type="number" id="adj_${m.id}" min="0" step="0.5" value="${esc(nyt)}">
+            <div class="hint">${settings.countTodayTaken === false
+                ? 'Laske mukaan myös tämän päivän annos, jos et ole vielä ottanut sitä.'
+                : 'Älä laske mukaan tämän päivän annosta, jos olet jo ottanut sen.'}</div>
+
+            <div class="form-error" id="adjError_${m.id}"></div>
+            <div class="btn-row">
+                <button class="btn btn-secondary" onclick="cancelAdjust()">Peruuta</button>
+                <button class="btn btn-primary" onclick="saveAdjust('${m.id}')">Tallenna</button>
+            </div>
+        </div>
+    </div>`;
+}
+
 function renderNewPackageForm(m){
     const today = getTodayString();
     const d = settings.defaults || {};
@@ -1896,7 +1993,7 @@ function renderNewPrescriptionForm(m){
 // ============================================================
 function packageBadge(days){
     if(days === null) return '';
-    if(days <= settings.packageCriticalDays) return `<span class="badge badge-package-critical">🔴 Pakkaus ${days<=0?'on loppunut':'loppuu '+days+' pv kuluttua'}</span>`;
+    if(days <= settings.packageCriticalDays) return `<span class="badge badge-package-critical">🔴 ${days < 0 ? 'Pakkaus on loppunut' : (days === 0 ? 'Viimeinen annos tänään' : 'Pakkaus loppuu '+days+' pv kuluttua')}</span>`;
     if(days <= settings.packageWarningDays)  return `<span class="badge badge-package-warning">🟡 Pakkaus loppumassa (${days} pv)</span>`;
     return '';
 }
@@ -1965,6 +2062,7 @@ function renderMedCard(m, isHero){
     if(ui.editId === m.id) return renderEditForm(m);
     if(ui.newPackageId === m.id) return renderNewPackageForm(m);
     if(ui.newRxId === m.id) return renderNewPrescriptionForm(m);
+    if(ui.adjustId === m.id) return renderAdjustForm(m);
 
     const f = settings.cardFields;
     const packageDays = getPackageDaysRemaining(m);
@@ -1981,9 +2079,10 @@ function renderMedCard(m, isHero){
         else if(packageDays <= settings.packageWarningDays) cls += ' st-warn' + fill;
     }
 
-    const endText = (f.endDate && packageEnd) ? ` (loppuu noin ${formatDate(packageEnd)})` : '';
+    const endText = (f.endDate && packageEnd) ? ` (riittää ${formatDate(packageEnd)} asti)` : '';
     const fi = formInfo(m);
     const track = tracksDoses(m);
+    const pillsLeft = getPackagePillsRemaining(m);
     const packageSection = hasPackageInfo
         ? `<div class="med-days-number">${packageDays}</div>
            <div class="med-days-label">päivää lääkettä jäljellä${endText}</div>
@@ -2012,7 +2111,8 @@ function renderMedCard(m, isHero){
 
         ${f.badges ? (rxBadge(rxDays) + refillBadge(m) + (f.cart ? kauppaBadge(m) : '')) : ''}
 
-        ${(f.pkgInfo && track && m.packageSize && m.dosePerDay) ? `<div class="med-info-row" style="margin-top:.6rem">📦 ${m.packageSize} ${esc(fi.unit)} pakkauksessa · ${m.dosePerDay} ${esc(fi.per)}</div>` : ''}
+        ${(f.pillsLeft && pillsLeft !== null) ? `<div class="med-info-row" style="margin-top:.6rem">💊 Purkissa noin ${Math.max(0, pillsLeft)} ${esc(fi.unit)}${(m.packageAdjust||0) !== 0 ? ' (korjattu käsin)' : ''}</div>` : ''}
+        ${(f.pkgInfo && track && m.packageSize && m.dosePerDay) ? `<div class="med-info-row">📦 ${m.packageSize} ${esc(fi.unit)} pakkauksessa · ${m.dosePerDay} ${esc(fi.per)}</div>` : ''}
         ${(f.startDate && m.startDate) ? `<div class="med-info-row">📅 Pakkaus aloitettu ${formatDate(m.startDate)}</div>` : ''}
         ${f.rx ? (m.prescriptionValidUntil
             ? `<div class="med-info-row">📝 Resepti voimassa ${formatDate(m.prescriptionValidUntil)} asti</div>`
@@ -2021,6 +2121,7 @@ function renderMedCard(m, isHero){
 
         <div class="med-buttons">
             ${f.cart ? kauppaNappi(m) : ''}
+            ${hasPackageInfo ? `<button class="btn btn-secondary" onclick="openAdjust('${m.id}')">🔢 Korjaa jäljellä oleva määrä</button>` : ''}
             <button class="btn btn-success" onclick="openNewPackage('${m.id}')">🆕 Aloita uusi pakkaus</button>
             <button class="btn btn-rx" onclick="openNewPrescription('${m.id}')">📝 Aloita uusi resepti</button>
         </div>
@@ -2175,6 +2276,10 @@ window.commitHue = () => saveSettingsSoon();
 window.setTextScale = (v) => { settings.textScale = +v; applyTheme(); render(); saveSettingsSoon(); };
 window.setDensity = (v) => { settings.density = v; applyTheme(); render(); saveSettingsSoon(); };
 window.setCardHighlight = (v) => { settings.cardHighlight = v; render(); saveSettingsSoon(); };
+window.toggleCountToday = () => {
+    settings.countTodayTaken = settings.countTodayTaken === false;
+    render(); saveSettingsSoon();
+};
 window.toggleShowSearch = () => {
     settings.showSearch = settings.showSearch === false;
     if(!settings.showSearch) ui.search = '';
@@ -2497,6 +2602,7 @@ function renderSettingsView(){
         ${switchRow('Varoitusmerkit','Keltaiset ja punaiset merkit',f.badges,"toggleCardField('badges')")}
         ${switchRow('Kauppalista','Nappi ja merkki kauppalistasta',f.cart,"toggleCardField('cart')")}
         ${switchRow('Lääkemuoto','Merkki jossa lukee pilleri, tahna tai muu muoto',f.form,"toggleCardField('form')")}
+        ${switchRow('Jäljellä oleva määrä','Arvio siitä montako annosta purkissa on',f.pillsLeft,"toggleCardField('pillsLeft')")}
     `;
 
     // --- Hälytysrajat ---
@@ -2519,7 +2625,10 @@ function renderSettingsView(){
         <div class="btn-row">
             <button class="btn btn-secondary" onclick="resetThresholds()">Palauta oletukset</button>
             <button class="btn btn-primary" onclick="saveThresholds()">Tallenna</button>
-        </div>`;
+        </div>
+
+        <label style="margin-top:1.4rem">Laskenta</label>
+        ${switchRow('Tämän päivän annos on otettu','Päiväluku kertoo montako päivää lääke riittää tämän päivän jälkeen',t.countTodayTaken !== false,"toggleCountToday()")}`;
 
     // --- Tiedot ---
     let importBox = '';

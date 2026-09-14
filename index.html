@@ -555,7 +555,7 @@ import {
 //  numeron muuttaminen pakottaa selaimen hakemaan uuden workerin
 //  eikä välimuistiin voi jäädä vanhaa versiota roikkumaan.
 // ============================================================
-const APP_VERSION = '2026.09.11-5';
+const APP_VERSION = '2026.09.11-7';
 
 const firebaseConfig = {
     apiKey: "AIzaSyDswdEF9J0gsHJH6Zo_8BGZrf8DVG3FwYc",
@@ -623,6 +623,20 @@ const TEXT_SCALES = [
 //  joten niille seurataan vain reseptiä ja pakkauksia. Jokaisen
 //  lääkkeen kohdalla laskennan voi silti kytkeä käsin päälle.
 // ============================================================
+// ============================================================
+//  RESEPTIN MÄÄRÄ
+//  Reseptiin voi olla kirjattu pakkausten määrä, hoitojakson
+//  pituus (vuoden annos) tai kokonaismäärä yksikköinä. Nämä ovat
+//  eri asioita kuin reseptin voimassaolo, joka on aina päivämäärä.
+// ============================================================
+const RX_TYPES = {
+    packages: { name:'Pakkauksina',  icon:'📦', hint:'Reseptiin on kirjattu monta pakkausta' },
+    duration: { name:'Ajanjaksona',  icon:'🗓️', hint:'Esimerkiksi vuoden tai kahden vuoden annos' },
+    amount:   { name:'Määränä',      icon:'🔢', hint:'Kokonaismäärä yksikköinä' },
+    none:     { name:'Ei merkintää', icon:'➖', hint:'Seurataan vain voimassaoloa' }
+};
+const RX_UNITS = { kk:'kuukautta', v:'vuotta' };
+
 const FORMS = {
     pilleri:      { name:'Pilleri',      icon:'💊', unit:'pilleriä',      per:'pilleriä/pv',      track:true  },
     neste:        { name:'Neste',        icon:'💧', unit:'ml',            per:'ml/pv',            track:true  },
@@ -657,9 +671,10 @@ let pendingImport = null;       // tuotavat tiedot odottamassa vahvistusta
 
 let ui = {
     view:'dashboard', addFormOpen:false, addFormMode:'daily',
-    addForm:'pilleri', addTrack:true, draft:{},
-    editId:null, editFormMode:null, editForm:null, editTrack:null, editDraft:{},
-    newPackageId:null, newRxId:null,
+    addForm:'pilleri', addTrack:true, addRxType:'packages', addRxUnit:'v', draft:{},
+    editId:null, editFormMode:null, editForm:null, editTrack:null,
+    editRxType:null, editRxUnit:null, editDraft:{},
+    newPackageId:null, newRxId:null, newRxType:null, newRxUnit:null, newRxDraft:{},
     settingsSection:'ulkoasu', pinInput:'', pinError:'', medFilter:null, search:''
 };
 
@@ -1136,6 +1151,17 @@ function addYearsToDate(dateStr, years){
     d.setFullYear(d.getFullYear()+years);
     return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
+// Kuukausien lisäys niin että kuukauden viimeinen päivä pysyy
+// järkevänä: 31.1. plus kuukausi on 28.2. eikä 3.3.
+function addMonthsToDate(dateStr, months){
+    const d = new Date(dateStr+'T12:00:00');
+    const paiva = d.getDate();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + months);
+    const viimeinen = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+    d.setDate(Math.min(paiva, viimeinen));
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
 function daysFromToday(dateStr){
     const end = new Date(dateStr+'T12:00:00');
     const today = new Date(); today.setHours(12,0,0,0);
@@ -1168,6 +1194,56 @@ function getPrescriptionPackagesRemaining(m){
     if(!m.prescriptionTotalPackages) return null;
     const used = m.prescriptionPackagesUsed || 0;
     return Math.max(0, m.prescriptionTotalPackages - used);
+}
+
+// Reseptin määrän merkintätapa. Vanhoissa lääkkeissä tapaa ei ole
+// kirjattu, joten se päätellään: jos pakkausmäärä on annettu, kyse
+// on pakkauksista, muuten määrää ei ole merkitty.
+function rxTypeOf(m){
+    const t = m && m.rxType;
+    if(t && RX_TYPES[t]) return t;
+    return (m && m.prescriptionTotalPackages) ? 'packages' : 'none';
+}
+// Hoitojakson pituus kuukausina.
+function rxDurationMonths(m){
+    if(!m || !m.rxDurationValue) return null;
+    const arvo = parseFloat(m.rxDurationValue);
+    if(!arvo || arvo <= 0) return null;
+    return m.rxDurationUnit === 'kk' ? Math.round(arvo) : Math.round(arvo * 12);
+}
+// Milloin reseptiin kirjattu annos on käytetty loppuun.
+function rxPeriodEnd(m){
+    if(rxTypeOf(m) !== 'duration') return null;
+    const kk = rxDurationMonths(m);
+    if(!kk || !m.rxStartDate) return null;
+    return addMonthsToDate(m.rxStartDate, kk);
+}
+function rxPeriodDaysRemaining(m){
+    const loppu = rxPeriodEnd(m);
+    return loppu ? daysFromToday(loppu) : null;
+}
+function rxUnitsRemaining(m){
+    if(rxTypeOf(m) !== 'amount' || !m.rxTotalUnits) return null;
+    return Math.max(0, m.rxTotalUnits - (m.rxUsedUnits || 0));
+}
+// Lyhyt kuvaus reseptin määrästä, esim. 2 vuoden annos.
+function rxAmountText(m){
+    const tyyppi = rxTypeOf(m);
+    if(tyyppi === 'packages'){
+        return m.prescriptionTotalPackages ? m.prescriptionTotalPackages + ' pakkausta' : '';
+    }
+    if(tyyppi === 'duration'){
+        const arvo = parseFloat(m.rxDurationValue) || 0;
+        if(!arvo) return '';
+        const yksikko = m.rxDurationUnit === 'kk'
+            ? (arvo === 1 ? 'kuukauden' : arvo + ' kuukauden')
+            : (arvo === 1 ? 'vuoden' : arvo + ' vuoden');
+        return yksikko + ' annos';
+    }
+    if(tyyppi === 'amount'){
+        return m.rxTotalUnits ? m.rxTotalUnits + ' ' + formInfo(m).unit : '';
+    }
+    return '';
 }
 
 // Reseptin pikavalinnat: asettaa päivämääräkenttään tämän päivän
@@ -1258,16 +1334,60 @@ function captureFields(ids, target){
 function draftVal(store, id, oletus){
     return (store && typeof store[id] === 'string') ? store[id] : (oletus == null ? '' : oletus);
 }
-const ADD_IDS = ['newMedName','newMedRx','newMedTotal','newMedUsed','newMedSize','newMedDose','newMedStart'];
+const ADD_IDS = ['newMedName','newMedRx','newMedTotal','newMedUsed','newMedSize','newMedDose','newMedStart',
+                 'newMedDur','newMedRxStart','newMedUnits','newMedUsedUnits'];
+
+// Lukee reseptin määräkentät valitun tavan mukaan ja palauttaa ne
+// lääkkeeseen tallennettavassa muodossa.
+function readRxAmount(pre, tyyppi, yksikko, suffix, sailyta){
+    const sfx = suffix ? '_' + suffix : '';
+    const num = (nimi) => {
+        const el = document.getElementById(pre + nimi + sfx);
+        if(!el || el.value === '') return null;
+        const v = parseFloat(el.value);
+        return isNaN(v) ? null : v;
+    };
+    // Haettujen pakkausten laskuri ei ole lomakkeella muissa kuin
+    // pakkausmääräisessä reseptissä. Muokattaessa se säilytetään,
+    // uutta reseptiä aloitettaessa nollataan.
+    const vanhaPaketit = sailyta ? (sailyta.prescriptionPackagesUsed || 0) : 0;
+    const vanhatYksikot = sailyta ? (sailyta.rxUsedUnits || 0) : 0;
+
+    const tulos = {
+        rxType: tyyppi,
+        prescriptionTotalPackages: null, prescriptionPackagesUsed: vanhaPaketit,
+        rxDurationValue: null, rxDurationUnit: yksikko, rxStartDate: null,
+        rxTotalUnits: null, rxUsedUnits: vanhatYksikot
+    };
+    if(tyyppi === 'packages'){
+        tulos.prescriptionTotalPackages = num('Total');
+        tulos.prescriptionPackagesUsed = num('Used') || 0;
+    } else if(tyyppi === 'duration'){
+        tulos.rxDurationValue = num('Dur');
+        const el = document.getElementById(pre + 'RxStart' + sfx);
+        tulos.rxStartDate = (el && el.value) || getTodayString();
+    } else if(tyyppi === 'amount'){
+        tulos.rxTotalUnits = num('Units');
+        tulos.rxUsedUnits = num('UsedUnits') || 0;
+    }
+    return tulos;
+}
 
 window.showAddMedicineForm = () => {
     ui.addFormOpen = true; ui.addFormMode = 'daily';
-    ui.addForm = 'pilleri'; ui.addTrack = FORMS.pilleri.track; ui.draft = {};
+    ui.addForm = 'pilleri'; ui.addTrack = FORMS.pilleri.track;
+    ui.addRxType = 'packages'; ui.addRxUnit = 'v'; ui.draft = {};
     ui.editId = null; ui.newPackageId = null; ui.newRxId = null;
     render();
 };
 window.cancelAddMedicine = () => { ui.addFormOpen = false; ui.draft = {}; render(); };
 window.setAddFormMode = (mode) => { captureFields(ADD_IDS, ui.draft); ui.addFormMode = mode; render(); };
+window.setAddRxType = (tyyppi) => {
+    captureFields(ADD_IDS, ui.draft);
+    ui.addRxType = RX_TYPES[tyyppi] ? tyyppi : 'packages';
+    render();
+};
+window.setAddRxTypeUnit = (y) => { captureFields(ADD_IDS, ui.draft); ui.addRxUnit = y === 'kk' ? 'kk' : 'v'; render(); };
 window.setAddForm = (form) => {
     captureFields(ADD_IDS, ui.draft);
     ui.addForm = FORMS[form] ? form : 'pilleri';
@@ -1282,21 +1402,17 @@ window.saveNewMedicine = async () => {
     const form = FORMS[ui.addForm] ? ui.addForm : 'pilleri';
     const name  = document.getElementById('newMedName').value.trim();
     const rx    = document.getElementById('newMedRx').value;
-    const totalRaw = document.getElementById('newMedTotal').value;
-    const usedRaw  = document.getElementById('newMedUsed').value;
     const err   = document.getElementById('newMedError');
 
     if(!name){ err.textContent = 'Anna lääkkeen nimi.'; return; }
 
-    const total = totalRaw ? parseInt(totalRaw, 10) : null;
-    const used  = usedRaw !== '' ? parseInt(usedRaw, 10) : (total ? 1 : 0);
+    const maara = readRxAmount('newMed', ui.addRxType || 'packages', ui.addRxUnit || 'v');
 
     const med = {
         name, mode, form,
         trackDoses: mode === 'daily' ? !!ui.addTrack : false,
         prescriptionValidUntil: rx || null,
-        prescriptionTotalPackages: total,
-        prescriptionPackagesUsed: used
+        ...maara
     };
 
     if(mode === 'daily' && ui.addTrack){
@@ -1324,7 +1440,9 @@ window.saveNewMedicine = async () => {
 // ============================================================
 //  LÄÄKKEEN MUOKKAUS
 // ============================================================
-const editIds = (id) => ['editName_'+id,'editRx_'+id,'editTotal_'+id,'editUsed_'+id,'editSize_'+id,'editDose_'+id,'editStart_'+id];
+const editIds = (id) => ['editName_'+id,'editRx_'+id,'editTotal_'+id,'editUsed_'+id,'editSize_'+id,
+                         'editDose_'+id,'editStart_'+id,'editDur_'+id,'editRxStart_'+id,
+                         'editUnits_'+id,'editUsedUnits_'+id];
 
 window.openEditMedicine = (id) => {
     const m = data.medicines[id];
@@ -1332,12 +1450,20 @@ window.openEditMedicine = (id) => {
     ui.editFormMode = (m && m.mode) || 'daily';
     ui.editForm = formOf(m);
     ui.editTrack = tracksDoses(m);
+    ui.editRxType = rxTypeOf(m);
+    ui.editRxUnit = (m && m.rxDurationUnit === 'kk') ? 'kk' : 'v';
     ui.editDraft = {};
     ui.addFormOpen = false; ui.newPackageId = null; ui.newRxId = null;
     render();
 };
 window.cancelEditMedicine = () => { ui.editId = null; ui.editFormMode = null; ui.editDraft = {}; render(); };
 window.setEditFormMode = (mode) => { captureFields(editIds(ui.editId), ui.editDraft); ui.editFormMode = mode; render(); };
+window.setEditRxType = (tyyppi) => {
+    captureFields(editIds(ui.editId), ui.editDraft);
+    ui.editRxType = RX_TYPES[tyyppi] ? tyyppi : 'packages';
+    render();
+};
+window.setEditRxTypeUnit = (y) => { captureFields(editIds(ui.editId), ui.editDraft); ui.editRxUnit = y === 'kk' ? 'kk' : 'v'; render(); };
 window.setEditForm = (form) => {
     captureFields(editIds(ui.editId), ui.editDraft);
     ui.editForm = FORMS[form] ? form : 'pilleri';
@@ -1353,14 +1479,11 @@ window.saveEditMedicine = async (id) => {
     const track = mode === 'daily' ? !!ui.editTrack : false;
     const name  = document.getElementById('editName_'+id).value.trim();
     const rx    = document.getElementById('editRx_'+id).value;
-    const totalRaw = document.getElementById('editTotal_'+id).value;
-    const usedRaw  = document.getElementById('editUsed_'+id).value;
     const err   = document.getElementById('editError_'+id);
 
     if(!name){ err.textContent = 'Anna lääkkeen nimi.'; return; }
 
-    const total = totalRaw ? parseInt(totalRaw, 10) : null;
-    const used  = usedRaw !== '' ? parseInt(usedRaw, 10) : 0;
+    const maara = readRxAmount('edit', ui.editRxType || 'packages', ui.editRxUnit || 'v', id, m);
 
     if(mode === 'daily' && track){
         const sizeRaw  = document.getElementById('editSize_'+id).value;
@@ -1382,7 +1505,7 @@ window.saveEditMedicine = async (id) => {
 
     m.name = name; m.mode = mode; m.form = form; m.trackDoses = track;
     m.prescriptionValidUntil = rx || null;
-    m.prescriptionTotalPackages = total; m.prescriptionPackagesUsed = used;
+    Object.assign(m, maara);
 
     ui.editId = null; ui.editFormMode = null; ui.editDraft = {};
     await saveData(); render();
@@ -1415,8 +1538,16 @@ window.saveNewPackage = async (id) => {
         m.packageSize = size; m.dosePerDay = dose;
     }
 
+    // Reseptin laskuri kasvaa sen mukaan miten määrä on kirjattu:
+    // pakkausmääräiseen lisätään pakkaus, määräiseen pakkauksen
+    // sisältö. Ajanjaksoon perustuva ei tarvitse laskuria, mutta
+    // haetut pakkaukset merkitään silti muistiin.
     if(m.prescriptionValidUntil){
+        const tyyppi = rxTypeOf(m);
         m.prescriptionPackagesUsed = (m.prescriptionPackagesUsed || 0) + 1;
+        if(tyyppi === 'amount' && m.packageSize){
+            m.rxUsedUnits = (m.rxUsedUnits || 0) + m.packageSize;
+        }
     }
 
     m.startDate = start;
@@ -1428,22 +1559,37 @@ window.saveNewPackage = async (id) => {
 // ============================================================
 //  UUSI RESEPTI
 // ============================================================
-window.openNewPrescription = (id) => { ui.newRxId = id; ui.addFormOpen = false; ui.editId = null; ui.newPackageId = null; render(); };
-window.cancelNewPrescription = () => { ui.newRxId = null; render(); };
+window.openNewPrescription = (id) => {
+    const m = data.medicines[id];
+    ui.newRxId = id;
+    ui.newRxType = rxTypeOf(m);
+    ui.newRxUnit = (m && m.rxDurationUnit === 'kk') ? 'kk' : 'v';
+    ui.newRxDraft = {};
+    ui.addFormOpen = false; ui.editId = null; ui.newPackageId = null;
+    render();
+};
+window.cancelNewPrescription = () => { ui.newRxId = null; ui.newRxDraft = {}; render(); };
+const newRxIds = (id) => ['rxNew_'+id,'rxTotal_'+id,'rxUsed_'+id,'rxDur_'+id,'rxRxStart_'+id,'rxUnits_'+id,'rxUsedUnits_'+id];
+window.setNewRxType = (tyyppi) => {
+    captureFields(newRxIds(ui.newRxId), ui.newRxDraft);
+    ui.newRxType = RX_TYPES[tyyppi] ? tyyppi : 'packages';
+    render();
+};
+window.setNewRxTypeUnit = (y) => { captureFields(newRxIds(ui.newRxId), ui.newRxDraft); ui.newRxUnit = y === 'kk' ? 'kk' : 'v'; render(); };
 
 window.saveNewPrescription = async (id) => {
     const m = data.medicines[id]; if(!m) return;
     const rx = document.getElementById('rxNew_'+id).value;
-    const totalRaw = document.getElementById('rxTotal_'+id).value;
     const err = document.getElementById('rxError_'+id);
 
     if(!rx){ err.textContent = 'Anna reseptin voimassaolopäivä.'; return; }
 
-    m.prescriptionValidUntil = rx;
-    m.prescriptionTotalPackages = totalRaw ? parseInt(totalRaw, 10) : null;
-    m.prescriptionPackagesUsed = 0;
+    const maara = readRxAmount('rx', ui.newRxType || 'packages', ui.newRxUnit || 'v', id);
 
-    ui.newRxId = null;
+    m.prescriptionValidUntil = rx;
+    Object.assign(m, maara);
+
+    ui.newRxId = null; ui.newRxDraft = {};
     await saveData(); render();
 };
 
@@ -1451,6 +1597,9 @@ window.logAsNeededPackage = async (id) => {
     const m = data.medicines[id]; if(!m) return;
     if(!confirm('Merkitäänkö uusi pakkaus ostetuksi lääkkeelle "' + m.name + '"?')) return;
     m.prescriptionPackagesUsed = (m.prescriptionPackagesUsed || 0) + 1;
+    if(rxTypeOf(m) === 'amount' && m.packageSize){
+        m.rxUsedUnits = (m.rxUsedUnits || 0) + m.packageSize;
+    }
     await saveData(); render();
 };
 
@@ -1463,6 +1612,60 @@ function formPicker(valittu, action){
         Object.entries(FORMS).map(([key, f]) =>
             `<button type="button" class="btn-ghost ${valittu===key?'on':''}" onclick="${action}('${key}')">${f.icon} ${f.name}</button>`
         ).join('') + `</div>`;
+}
+
+// Reseptin määräkentät. Sama rakenne lisäys-, muokkaus- ja
+// uusi resepti -lomakkeessa, vain kenttien tunnisteet vaihtuvat.
+function rxAmountFields(pre, tyyppi, yksikko, arvot, actionPrefix, fi, suffix){
+    const sfx = suffix ? '_' + suffix : '';
+    const chips = `<div class="quick-picks" style="margin-bottom:.2rem">` +
+        Object.entries(RX_TYPES).map(([key, r]) =>
+            `<button type="button" class="btn-ghost ${tyyppi===key?'on':''}" onclick="${actionPrefix}('${key}')">${r.icon} ${r.name}</button>`
+        ).join('') + `</div>`;
+
+    let kentat = '';
+    if(tyyppi === 'packages'){
+        kentat = `
+        <label for="${pre}Total${sfx}">Pakkauksia reseptillä yhteensä</label>
+        <input type="number" id="${pre}Total${sfx}" min="1" step="1" placeholder="esim. 3" value="${esc(arvot.total)}">
+
+        <label for="${pre}Used${sfx}">Joista jo käytetty/ostettu</label>
+        <input type="number" id="${pre}Used${sfx}" min="0" step="1" value="${esc(arvot.used)}">
+        <div class="hint">Laskuri kasvaa itsestään kun aloitat uuden pakkauksen.</div>`;
+    } else if(tyyppi === 'duration'){
+        kentat = `
+        <div class="pkg-form-row">
+            <div>
+                <label for="${pre}Dur${sfx}">Jakson pituus</label>
+                <input type="number" id="${pre}Dur${sfx}" min="1" step="1" placeholder="esim. 1" value="${esc(arvot.dur)}">
+            </div>
+            <div>
+                <label>Yksikkö</label>
+                <div class="quick-picks" style="margin-top:.1rem">
+                    <button type="button" class="btn-ghost ${yksikko==='kk'?'on':''}" onclick="${actionPrefix}Unit('kk')">kuukautta</button>
+                    <button type="button" class="btn-ghost ${yksikko==='v'?'on':''}" onclick="${actionPrefix}Unit('v')">vuotta</button>
+                </div>
+            </div>
+        </div>
+
+        <label for="${pre}RxStart${sfx}">Jakso alkoi</label>
+        <input type="date" id="${pre}RxStart${sfx}" value="${esc(arvot.rxStart)}">
+        <div class="hint">Yleensä reseptin määräyspäivä. Tästä lasketaan milloin reseptiin kirjattu annos on käytetty.</div>`;
+    } else if(tyyppi === 'amount'){
+        kentat = `
+        <label for="${pre}Units${sfx}">Yhteensä reseptillä (${esc(fi.unit)})</label>
+        <input type="number" id="${pre}Units${sfx}" min="1" step="1" placeholder="esim. 300" value="${esc(arvot.units)}">
+
+        <label for="${pre}UsedUnits${sfx}">Josta jo käytetty (${esc(fi.unit)})</label>
+        <input type="number" id="${pre}UsedUnits${sfx}" min="0" step="1" value="${esc(arvot.usedUnits)}">
+        <div class="hint">Kun aloitat uuden pakkauksen, pakkauksen määrä lisätään käytettyihin automaattisesti.</div>`;
+    } else {
+        kentat = `<div class="hint">Reseptin määrää ei seurata — vain voimassaolo.</div>`;
+    }
+
+    return `<label style="margin-top:1rem">Reseptin määrä</label>
+        ${chips}
+        ${kentat}`;
 }
 
 function renderAddForm(){
@@ -1511,12 +1714,14 @@ function renderAddForm(){
         <input type="date" id="newMedRx" value="${esc(draftVal(dr,'newMedRx',''))}">
         ${rxQuickPicks('newMedRx')}
 
-        <label for="newMedTotal">Pakkauksia reseptillä yhteensä (valinnainen)</label>
-        <input type="number" id="newMedTotal" min="1" step="1" placeholder="esim. 3" value="${esc(draftVal(dr,'newMedTotal',''))}">
-
-        <label for="newMedUsed">Joista jo käytetty/ostettu (valinnainen)</label>
-        <input type="number" id="newMedUsed" min="0" step="1" value="${esc(draftVal(dr,'newMedUsed','1'))}">
-        <div class="hint">Jos lisäät lääkkeen, jota jo käytät, tämä on yleensä 1.</div>
+        ${rxAmountFields('newMed', ui.addRxType || 'packages', ui.addRxUnit || 'v', {
+            total: draftVal(dr,'newMedTotal',''),
+            used:  draftVal(dr,'newMedUsed','1'),
+            dur:   draftVal(dr,'newMedDur',''),
+            rxStart: draftVal(dr,'newMedRxStart', getTodayString()),
+            units: draftVal(dr,'newMedUnits',''),
+            usedUnits: draftVal(dr,'newMedUsedUnits','0')
+        }, 'setAddRxType', fi)}
 
         ${seurantaRivi}
         ${maaraKentat}
@@ -1574,11 +1779,14 @@ function renderEditForm(m){
         <input type="date" id="editRx_${m.id}" value="${v('editRx', m.prescriptionValidUntil||'')}">
         ${rxQuickPicks('editRx_'+m.id)}
 
-        <label for="editTotal_${m.id}">Pakkauksia reseptillä yhteensä (valinnainen)</label>
-        <input type="number" id="editTotal_${m.id}" min="1" step="1" value="${v('editTotal', m.prescriptionTotalPackages||'')}">
-
-        <label for="editUsed_${m.id}">Joista käytetty/ostettu (valinnainen)</label>
-        <input type="number" id="editUsed_${m.id}" min="0" step="1" value="${v('editUsed', m.prescriptionPackagesUsed||0)}">
+        ${rxAmountFields('edit', ui.editRxType || rxTypeOf(m), ui.editRxUnit || 'v', {
+            total: draftVal(dr,'editTotal_'+m.id, m.prescriptionTotalPackages||''),
+            used:  draftVal(dr,'editUsed_'+m.id, m.prescriptionPackagesUsed||0),
+            dur:   draftVal(dr,'editDur_'+m.id, m.rxDurationValue||''),
+            rxStart: draftVal(dr,'editRxStart_'+m.id, m.rxStartDate || getTodayString()),
+            units: draftVal(dr,'editUnits_'+m.id, m.rxTotalUnits||''),
+            usedUnits: draftVal(dr,'editUsedUnits_'+m.id, m.rxUsedUnits||0)
+        }, 'setEditRxType', fi, m.id)}
 
         ${seurantaRivi}
         ${maaraKentat}
@@ -1596,9 +1804,25 @@ function renderNewPackageForm(m){
     const d = settings.defaults || {};
     const fi = formInfo(m);
     const track = tracksDoses(m);
-    const rxHint = m.prescriptionValidUntil
-        ? `Reseptillä käytetty ${m.prescriptionPackagesUsed||0}${m.prescriptionTotalPackages ? '/'+m.prescriptionTotalPackages : ''} pakkausta — tämä pakkaus kasvattaa laskuria automaattisesti.`
-        : `Tälle lääkkeelle ei ole asetettu reseptiä.`;
+    // Vihje kertoo mihin laskuriin tämä pakkaus vaikuttaa. Ajanjaksoon
+    // perustuvalla reseptillä ei ole pakkausmäärää, joten siitä ei
+    // puhuta – haetut pakkaukset merkitään silti muistiin.
+    const rxTyyppi = rxTypeOf(m);
+    let rxHint;
+    if(!m.prescriptionValidUntil){
+        rxHint = `Tälle lääkkeelle ei ole asetettu reseptiä.`;
+    } else if(rxTyyppi === 'packages'){
+        rxHint = `Reseptillä käytetty ${m.prescriptionPackagesUsed||0}${m.prescriptionTotalPackages ? '/'+m.prescriptionTotalPackages : ''} pakkausta — tämä pakkaus kasvattaa laskuria automaattisesti.`;
+    } else if(rxTyyppi === 'duration'){
+        const loppu = rxPeriodEnd(m);
+        rxHint = `Tämä on ${(m.prescriptionPackagesUsed||0) + 1}. pakkaus tällä reseptillä.`
+               + (loppu ? ` Reseptin ${esc(rxAmountText(m))} riittää ${formatDate(loppu)} asti.` : '');
+    } else if(rxTyyppi === 'amount'){
+        const jaljella = rxUnitsRemaining(m);
+        rxHint = `Reseptillä jäljellä ${jaljella === null ? '?' : jaljella} ${esc(fi.unit)} — pakkauksen määrä vähennetään automaattisesti.`;
+    } else {
+        rxHint = `Reseptin määrää ei seurata, vain voimassaoloa.`;
+    }
 
     const maarat = track ? `
             <div class="pkg-form-row">
@@ -1636,20 +1860,27 @@ function renderNewPackageForm(m){
 }
 
 function renderNewPrescriptionForm(m){
+    const dr = ui.newRxDraft || {};
     return `<div class="pkg-form-card">
         <div class="pkg-form-header rx">
             <span class="pkg-form-tag">📝 UUSI RESEPTI</span>
             <h3>${esc(m.name)}</h3>
         </div>
         <div class="pkg-form-body">
-            <div class="hint" style="margin-bottom:.6rem">Nykyinen pakkaus jatkuu ennallaan — tämä vain päivittää reseptitiedot ja nollaa pakkauslaskurin.</div>
+            <div class="hint" style="margin-bottom:.6rem">Nykyinen pakkaus jatkuu ennallaan — tämä päivittää reseptitiedot ja nollaa laskurit.</div>
 
             <label for="rxNew_${m.id}">Resepti voimassa asti</label>
-            <input type="date" id="rxNew_${m.id}" value="${esc(m.prescriptionValidUntil||'')}">
+            <input type="date" id="rxNew_${m.id}" value="${esc(draftVal(dr,'rxNew_'+m.id, m.prescriptionValidUntil||''))}">
             ${rxQuickPicks('rxNew_'+m.id)}
 
-            <label for="rxTotal_${m.id}">Pakkauksia reseptillä yhteensä</label>
-            <input type="number" id="rxTotal_${m.id}" min="1" step="1" placeholder="esim. 3" value="${esc(m.prescriptionTotalPackages||'')}">
+            ${rxAmountFields('rx', ui.newRxType || rxTypeOf(m), ui.newRxUnit || 'v', {
+                total: draftVal(dr,'rxTotal_'+m.id, m.prescriptionTotalPackages||''),
+                used:  draftVal(dr,'rxUsed_'+m.id, 0),
+                dur:   draftVal(dr,'rxDur_'+m.id, m.rxDurationValue||''),
+                rxStart: draftVal(dr,'rxRxStart_'+m.id, getTodayString()),
+                units: draftVal(dr,'rxUnits_'+m.id, m.rxTotalUnits||''),
+                usedUnits: draftVal(dr,'rxUsedUnits_'+m.id, 0)
+            }, 'setNewRxType', formInfo(m), m.id)}
 
             <div class="form-error" id="rxError_${m.id}"></div>
             <div class="btn-row">
@@ -1675,12 +1906,40 @@ function rxBadge(days){
     if(days <= settings.rxWarningDays)  return `<span class="badge badge-rx-warning">🟡 Resepti vanhenemassa (${days} pv)</span>`;
     return '';
 }
+// Reseptin määrän merkki. Muoto riippuu siitä miten määrä on
+// kirjattu: pakkauksina, hoitojaksona vai yksikköinä.
 function refillBadge(m){
-    if(!m.prescriptionTotalPackages) return '';
-    const remaining = getPrescriptionPackagesRemaining(m);
-    if(remaining <= 0) return `<span class="badge badge-rx-critical">🔴 Resepti käytetty loppuun (${m.prescriptionPackagesUsed}/${m.prescriptionTotalPackages})</span>`;
-    if(remaining === 1) return `<span class="badge badge-rx-warning">🟡 Reseptillä 1 pakkaus jäljellä (${m.prescriptionPackagesUsed}/${m.prescriptionTotalPackages})</span>`;
-    return `<span class="badge badge-neutral">🧾 Reseptillä jäljellä ${remaining} pakkausta (${m.prescriptionPackagesUsed}/${m.prescriptionTotalPackages})</span>`;
+    const tyyppi = rxTypeOf(m);
+
+    if(tyyppi === 'packages'){
+        if(!m.prescriptionTotalPackages) return '';
+        const remaining = getPrescriptionPackagesRemaining(m);
+        if(remaining <= 0) return `<span class="badge badge-rx-critical">🔴 Resepti käytetty loppuun (${m.prescriptionPackagesUsed}/${m.prescriptionTotalPackages})</span>`;
+        if(remaining === 1) return `<span class="badge badge-rx-warning">🟡 Reseptillä 1 pakkaus jäljellä (${m.prescriptionPackagesUsed}/${m.prescriptionTotalPackages})</span>`;
+        return `<span class="badge badge-neutral">🧾 Reseptillä jäljellä ${remaining} pakkausta (${m.prescriptionPackagesUsed}/${m.prescriptionTotalPackages})</span>`;
+    }
+
+    if(tyyppi === 'duration'){
+        const paivat = rxPeriodDaysRemaining(m);
+        const teksti = esc(rxAmountText(m));
+        if(paivat === null) return teksti ? `<span class="badge badge-neutral">🗓️ ${teksti}</span>` : '';
+        if(paivat <= 0) return `<span class="badge badge-rx-critical">🔴 ${teksti} on käytetty loppuun</span>`;
+        if(paivat <= settings.rxCriticalDays) return `<span class="badge badge-rx-critical">🔴 ${teksti} loppuu ${paivat} pv kuluttua</span>`;
+        if(paivat <= settings.rxWarningDays) return `<span class="badge badge-rx-warning">🟡 ${teksti} loppuu ${paivat} pv kuluttua</span>`;
+        return `<span class="badge badge-neutral">🗓️ ${teksti} riittää ${formatDate(rxPeriodEnd(m))} asti (${paivat} pv)</span>`;
+    }
+
+    if(tyyppi === 'amount'){
+        if(!m.rxTotalUnits) return '';
+        const jaljella = rxUnitsRemaining(m);
+        const yksikko = esc(formInfo(m).unit);
+        const kaytetty = `${m.rxUsedUnits || 0}/${m.rxTotalUnits}`;
+        if(jaljella <= 0) return `<span class="badge badge-rx-critical">🔴 Resepti käytetty loppuun (${kaytetty})</span>`;
+        if(m.packageSize && jaljella <= m.packageSize) return `<span class="badge badge-rx-warning">🟡 Reseptillä jäljellä ${jaljella} ${yksikko} (${kaytetty})</span>`;
+        return `<span class="badge badge-neutral">🔢 Reseptillä jäljellä ${jaljella} ${yksikko} (${kaytetty})</span>`;
+    }
+
+    return '';
 }
 function kauppaBadge(m){
     return onKauppalistalla(m.name) ? `<span class="badge badge-cart">🛒 Kauppalistalla</span>` : '';
@@ -1689,6 +1948,17 @@ function kauppaNappi(m){
     if(kauppaLisays === m.id)    return `<button class="btn btn-cart" disabled>🛒 Lisätään...</button>`;
     if(onKauppalistalla(m.name)) return `<button class="btn btn-cart" disabled>🛒 Jo kauppalistalla</button>`;
     return `<button class="btn btn-cart" onclick="lisaaKauppalistaan('${m.id}')">🛒 Lisää kauppalistaan</button>`;
+}
+
+// Kun reseptissä ei ole pakkausmäärää, haettujen pakkausten luku on
+// silti hyödyllinen tieto: se kertoo monesko purkki on käytössä.
+function pickupRow(m, f){
+    if(!f.rx || !m.prescriptionValidUntil) return '';
+    const tyyppi = rxTypeOf(m);
+    if(tyyppi === 'packages' || tyyppi === 'amount') return '';
+    const haettu = m.prescriptionPackagesUsed || 0;
+    if(haettu <= 0) return '';
+    return `<div class="med-info-row">📦 Tällä reseptillä haettu ${haettu} pakkausta</div>`;
 }
 
 function renderMedCard(m, isHero){
@@ -1747,6 +2017,7 @@ function renderMedCard(m, isHero){
         ${f.rx ? (m.prescriptionValidUntil
             ? `<div class="med-info-row">📝 Resepti voimassa ${formatDate(m.prescriptionValidUntil)} asti</div>`
             : `<div class="med-info-row">📝 Reseptin voimassaoloa ei asetettu</div>`) : ''}
+        ${pickupRow(m, f)}
 
         <div class="med-buttons">
             ${f.cart ? kauppaNappi(m) : ''}
@@ -1790,12 +2061,13 @@ function renderAsNeededCard(m){
         ${f.rx ? (m.prescriptionValidUntil
             ? `<div class="med-info-row">📝 Resepti voimassa ${formatDate(m.prescriptionValidUntil)} asti${rxDays!==null ? ' ('+rxDays+' pv)' : ''}</div>`
             : `<div class="med-info-row">📝 Reseptin voimassaoloa ei asetettu</div>`) : ''}
+        ${pickupRow(m, f)}
 
         ${f.badges ? (rxBadge(rxDays) + refillBadge(m) + (f.cart ? kauppaBadge(m) : '')) : ''}
 
         <div class="med-buttons">
             ${f.cart ? kauppaNappi(m) : ''}
-            ${m.prescriptionTotalPackages ? `<button class="btn btn-secondary" onclick="logAsNeededPackage('${m.id}')">📦 Merkitse pakkaus ostetuksi (${remaining} jäljellä)</button>` : ''}
+            ${m.prescriptionValidUntil ? `<button class="btn btn-secondary" onclick="logAsNeededPackage('${m.id}')">📦 Merkitse pakkaus ostetuksi${rxTypeOf(m)==='packages' && m.prescriptionTotalPackages ? ` (${remaining} jäljellä)` : ''}</button>` : ''}
             <button class="btn btn-rx" onclick="openNewPrescription('${m.id}')">📝 Aloita uusi resepti</button>
         </div>
     </div>`;
@@ -1829,6 +2101,7 @@ function renderPrescriptionsView(){
                     <div class="${chipCls}">${chipContent}</div>
                 </div>
                 <div class="rx-card-date">📅 Resepti vanhenee ${formatDate(m.prescriptionValidUntil)}</div>
+                ${rxAmountText(m) ? `<div class="med-info-row">${RX_TYPES[rxTypeOf(m)].icon} Määrä: ${esc(rxAmountText(m))}</div>` : ''}
                 ${refillBadge(m)}
             </div>`;
         });

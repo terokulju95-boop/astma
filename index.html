@@ -256,6 +256,7 @@ input:focus{border-color:var(--brand);box-shadow:0 0 0 3px hsl(var(--h) 70% 45% 
     border:1px solid currentColor;margin-bottom:.35rem;
 }
 .type-chip.asneeded{color:var(--type-asneeded)}
+.type-chip.form-chip{color:var(--text-soft);margin-left:.3rem}
 .med-card.hero .type-chip{background:rgba(255,255,255,.2);color:var(--on-brand)}
 .med-days-number{font-size:2.6rem;font-weight:800;line-height:1;margin:.35rem 0 .1rem}
 .med-days-label{font-size:.82rem;color:var(--text-soft)}
@@ -536,7 +537,7 @@ import {
 //  numeron muuttaminen pakottaa selaimen hakemaan uuden workerin
 //  eikä välimuistiin voi jäädä vanhaa versiota roikkumaan.
 // ============================================================
-const APP_VERSION = '2026.09.11-2';
+const APP_VERSION = '2026.09.11-4';
 
 const firebaseConfig = {
     apiKey: "AIzaSyDswdEF9J0gsHJH6Zo_8BGZrf8DVG3FwYc",
@@ -572,9 +573,10 @@ const DEFAULT_SETTINGS = {
     textScale: 1,
     density: 'normal',
     cardHighlight: 'ei',      // 'ei' | 'reuna' | 'taysi'
+    showAllFilter: false,     // näytetäänkö Kaikki-nappi suodattimessa
     // Tyhjä arvo tarkoittaa että teeman oma väri on käytössä.
     colors: { bg:'', surface:'', text:'', brand:'', success:'', rx:'', cart:'', secondary:'' },
-    cardFields: { pkgInfo:true, startDate:true, endDate:true, rx:true, badges:true, cart:true },
+    cardFields: { pkgInfo:true, startDate:true, endDate:true, rx:true, badges:true, cart:true, form:true },
     defaults: { packageSize:'', dosePerDay:'', rxYears:2 }
 };
 
@@ -594,6 +596,23 @@ const TEXT_SCALES = [
     { v:1.12, label:'Suuri' },
     { v:1.28, label:'Erittäin suuri' }
 ];
+
+// ============================================================
+//  LÄÄKEMUODOT
+//  Muoto määrää yksikön ja sen, lasketaanko pakkauksen riitto
+//  annoksista. Tahnalle tai voiteelle laskenta ei ole mielekäs,
+//  joten niille seurataan vain reseptiä ja pakkauksia. Jokaisen
+//  lääkkeen kohdalla laskennan voi silti kytkeä käsin päälle.
+// ============================================================
+const FORMS = {
+    pilleri:      { name:'Pilleri',      icon:'💊', unit:'pilleriä',      per:'pilleriä/pv',      track:true  },
+    neste:        { name:'Neste',        icon:'💧', unit:'ml',            per:'ml/pv',            track:true  },
+    inhalaattori: { name:'Inhalaattori', icon:'🌬️', unit:'annosta',       per:'annosta/pv',       track:true  },
+    suihke:       { name:'Suihke',       icon:'💨', unit:'annosta',       per:'annosta/pv',       track:true  },
+    tahna:        { name:'Tahna',        icon:'🪥', unit:'käyttökertaa',  per:'käyttökertaa/pv',  track:false },
+    voide:        { name:'Voide',        icon:'🧴', unit:'käyttökertaa',  per:'käyttökertaa/pv',  track:false },
+    muu:          { name:'Muu',          icon:'📦', unit:'yksikköä',      per:'yksikköä/pv',      track:false }
+};
 
 function cloneSettings(s){
     return {
@@ -619,8 +638,10 @@ let pendingImport = null;       // tuotavat tiedot odottamassa vahvistusta
 
 let ui = {
     view:'dashboard', addFormOpen:false, addFormMode:'daily',
-    editId:null, editFormMode:null, newPackageId:null, newRxId:null,
-    settingsSection:'ulkoasu', pinInput:'', pinError:'', medFilter:'all'
+    addForm:'pilleri', addTrack:true, draft:{},
+    editId:null, editFormMode:null, editForm:null, editTrack:null, editDraft:{},
+    newPackageId:null, newRxId:null,
+    settingsSection:'ulkoasu', pinInput:'', pinError:'', medFilter:null
 };
 
 // ============================================================
@@ -1086,7 +1107,19 @@ function daysFromToday(dateStr){
     return Math.ceil((end-today)/(1000*60*60*24));
 }
 
+// Lääkemuodon apurit. Vanhoissa tallennuksissa muotoa ei ole, joten
+// niitä kohdellaan pillereinä – laskenta säilyy täsmälleen entisellään.
+function formOf(m){ return FORMS[m && m.form] ? m.form : 'pilleri'; }
+function formInfo(m){ return FORMS[formOf(m)]; }
+function tracksDoses(m){
+    if(m && typeof m.trackDoses === 'boolean') return m.trackDoses;
+    return formInfo(m).track;
+}
+
 function getPackageEndDate(m){
+    // Tahnalle ja voiteelle riittoa ei lasketa, jolloin kortissa ei
+    // näy päivälukua eikä pakkausvaroituksia.
+    if(!tracksDoses(m)) return null;
     if(!m.packageSize || !m.dosePerDay || !m.startDate) return null;
     const totalDays = Math.floor(m.packageSize / m.dosePerDay);
     return addDaysToDate(m.startDate, totalDays);
@@ -1179,16 +1212,39 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
 // ============================================================
 //  LÄÄKKEEN LISÄYS
 // ============================================================
+// Lomakkeen kentät talteen ennen uudelleenpiirtoa. Ilman tätä
+// kirjoitettu nimi katoaisi aina kun muotoa tai tyyppiä vaihtaa.
+function captureFields(ids, target){
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) target[id] = el.value;
+    });
+}
+function draftVal(store, id, oletus){
+    return (store && typeof store[id] === 'string') ? store[id] : (oletus == null ? '' : oletus);
+}
+const ADD_IDS = ['newMedName','newMedRx','newMedTotal','newMedUsed','newMedSize','newMedDose','newMedStart'];
+
 window.showAddMedicineForm = () => {
     ui.addFormOpen = true; ui.addFormMode = 'daily';
+    ui.addForm = 'pilleri'; ui.addTrack = FORMS.pilleri.track; ui.draft = {};
     ui.editId = null; ui.newPackageId = null; ui.newRxId = null;
     render();
 };
-window.cancelAddMedicine = () => { ui.addFormOpen = false; render(); };
-window.setAddFormMode = (mode) => { ui.addFormMode = mode; render(); };
+window.cancelAddMedicine = () => { ui.addFormOpen = false; ui.draft = {}; render(); };
+window.setAddFormMode = (mode) => { captureFields(ADD_IDS, ui.draft); ui.addFormMode = mode; render(); };
+window.setAddForm = (form) => {
+    captureFields(ADD_IDS, ui.draft);
+    ui.addForm = FORMS[form] ? form : 'pilleri';
+    // Muodon vaihto tuo mukanaan sen luontaisen oletuksen laskennalle.
+    ui.addTrack = FORMS[ui.addForm].track;
+    render();
+};
+window.toggleAddTrack = () => { captureFields(ADD_IDS, ui.draft); ui.addTrack = !ui.addTrack; render(); };
 
 window.saveNewMedicine = async () => {
     const mode = ui.addFormMode || 'daily';
+    const form = FORMS[ui.addForm] ? ui.addForm : 'pilleri';
     const name  = document.getElementById('newMedName').value.trim();
     const rx    = document.getElementById('newMedRx').value;
     const totalRaw = document.getElementById('newMedTotal').value;
@@ -1201,13 +1257,14 @@ window.saveNewMedicine = async () => {
     const used  = usedRaw !== '' ? parseInt(usedRaw, 10) : (total ? 1 : 0);
 
     const med = {
-        name, mode,
+        name, mode, form,
+        trackDoses: mode === 'daily' ? !!ui.addTrack : false,
         prescriptionValidUntil: rx || null,
         prescriptionTotalPackages: total,
         prescriptionPackagesUsed: used
     };
 
-    if(mode === 'daily'){
+    if(mode === 'daily' && ui.addTrack){
         const sizeRaw  = document.getElementById('newMedSize').value;
         const doseRaw  = document.getElementById('newMedDose').value;
         const startRaw = document.getElementById('newMedStart').value;
@@ -1216,30 +1273,49 @@ window.saveNewMedicine = async () => {
         med.packageSize = (size && size > 0) ? size : null;
         med.dosePerDay  = (dose && dose > 0) ? dose : null;
         med.startDate   = startRaw || ((med.packageSize && med.dosePerDay) ? getTodayString() : null);
+    } else if(mode === 'daily'){
+        const startRaw = document.getElementById('newMedStart');
+        med.packageSize = null; med.dosePerDay = null;
+        med.startDate = (startRaw && startRaw.value) || getTodayString();
     } else {
         med.packageSize = null; med.dosePerDay = null; med.startDate = null;
     }
 
     data.medicines[uid()] = med;
-    ui.addFormOpen = false;
+    ui.addFormOpen = false; ui.draft = {};
     await saveData(); render();
 };
 
 // ============================================================
 //  LÄÄKKEEN MUOKKAUS
 // ============================================================
+const editIds = (id) => ['editName_'+id,'editRx_'+id,'editTotal_'+id,'editUsed_'+id,'editSize_'+id,'editDose_'+id,'editStart_'+id];
+
 window.openEditMedicine = (id) => {
+    const m = data.medicines[id];
     ui.editId = id;
-    ui.editFormMode = (data.medicines[id] && data.medicines[id].mode) || 'daily';
+    ui.editFormMode = (m && m.mode) || 'daily';
+    ui.editForm = formOf(m);
+    ui.editTrack = tracksDoses(m);
+    ui.editDraft = {};
     ui.addFormOpen = false; ui.newPackageId = null; ui.newRxId = null;
     render();
 };
-window.cancelEditMedicine = () => { ui.editId = null; ui.editFormMode = null; render(); };
-window.setEditFormMode = (mode) => { ui.editFormMode = mode; render(); };
+window.cancelEditMedicine = () => { ui.editId = null; ui.editFormMode = null; ui.editDraft = {}; render(); };
+window.setEditFormMode = (mode) => { captureFields(editIds(ui.editId), ui.editDraft); ui.editFormMode = mode; render(); };
+window.setEditForm = (form) => {
+    captureFields(editIds(ui.editId), ui.editDraft);
+    ui.editForm = FORMS[form] ? form : 'pilleri';
+    ui.editTrack = FORMS[ui.editForm].track;
+    render();
+};
+window.toggleEditTrack = () => { captureFields(editIds(ui.editId), ui.editDraft); ui.editTrack = !ui.editTrack; render(); };
 
 window.saveEditMedicine = async (id) => {
     const m = data.medicines[id]; if(!m) return;
     const mode  = ui.editFormMode || m.mode || 'daily';
+    const form  = FORMS[ui.editForm] ? ui.editForm : formOf(m);
+    const track = mode === 'daily' ? !!ui.editTrack : false;
     const name  = document.getElementById('editName_'+id).value.trim();
     const rx    = document.getElementById('editRx_'+id).value;
     const totalRaw = document.getElementById('editTotal_'+id).value;
@@ -1251,7 +1327,7 @@ window.saveEditMedicine = async (id) => {
     const total = totalRaw ? parseInt(totalRaw, 10) : null;
     const used  = usedRaw !== '' ? parseInt(usedRaw, 10) : 0;
 
-    if(mode === 'daily'){
+    if(mode === 'daily' && track){
         const sizeRaw  = document.getElementById('editSize_'+id).value;
         const doseRaw  = document.getElementById('editDose_'+id).value;
         const startRaw = document.getElementById('editStart_'+id).value;
@@ -1260,14 +1336,20 @@ window.saveEditMedicine = async (id) => {
         m.packageSize = (size && size > 0) ? size : null;
         m.dosePerDay  = (dose && dose > 0) ? dose : null;
         m.startDate   = startRaw || ((m.packageSize && m.dosePerDay) ? getTodayString() : null);
+    } else if(mode === 'daily'){
+        const startEl = document.getElementById('editStart_'+id);
+        // Määrät jätetään tallentamatta mutta ei pyyhitä, jotta
+        // laskennan voi kytkeä takaisin ilman että luvut katoavat.
+        m.startDate = (startEl && startEl.value) || m.startDate || getTodayString();
     } else {
         m.packageSize = null; m.dosePerDay = null; m.startDate = null;
     }
 
-    m.name = name; m.mode = mode; m.prescriptionValidUntil = rx || null;
+    m.name = name; m.mode = mode; m.form = form; m.trackDoses = track;
+    m.prescriptionValidUntil = rx || null;
     m.prescriptionTotalPackages = total; m.prescriptionPackagesUsed = used;
 
-    ui.editId = null; ui.editFormMode = null;
+    ui.editId = null; ui.editFormMode = null; ui.editDraft = {};
     await saveData(); render();
 };
 
@@ -1286,19 +1368,23 @@ window.cancelNewPackage = () => { ui.newPackageId = null; render(); };
 
 window.saveNewPackage = async (id) => {
     const m = data.medicines[id]; if(!m) return;
-    const size  = parseFloat(document.getElementById('pkgSize_'+id).value);
-    const dose  = parseFloat(document.getElementById('pkgDose_'+id).value);
     const start = document.getElementById('pkgStart_'+id).value || getTodayString();
     const err   = document.getElementById('pkgError_'+id);
 
-    if(!size || size <= 0){ err.textContent = 'Anna pakkauksen pillerimäärä (yli 0).'; return; }
-    if(!dose || dose <= 0){ err.textContent = 'Anna annos päivässä (yli 0).'; return; }
+    if(tracksDoses(m)){
+        const size  = parseFloat(document.getElementById('pkgSize_'+id).value);
+        const dose  = parseFloat(document.getElementById('pkgDose_'+id).value);
+        const fi = formInfo(m);
+        if(!size || size <= 0){ err.textContent = 'Anna pakkauksen määrä (' + fi.unit + ', yli 0).'; return; }
+        if(!dose || dose <= 0){ err.textContent = 'Anna annos päivässä (yli 0).'; return; }
+        m.packageSize = size; m.dosePerDay = dose;
+    }
 
     if(m.prescriptionValidUntil){
         m.prescriptionPackagesUsed = (m.prescriptionPackagesUsed || 0) + 1;
     }
 
-    m.startDate = start; m.packageSize = size; m.dosePerDay = dose;
+    m.startDate = start;
 
     ui.newPackageId = null;
     await saveData(); render();
@@ -1336,20 +1422,41 @@ window.logAsNeededPackage = async (id) => {
 // ============================================================
 //  LOMAKKEET
 // ============================================================
+// Muotovalitsin: samat napit sekä lisäys- että muokkauslomakkeessa.
+function formPicker(valittu, action){
+    return `<div class="quick-picks" style="margin-bottom:.2rem">` +
+        Object.entries(FORMS).map(([key, f]) =>
+            `<button type="button" class="btn-ghost ${valittu===key?'on':''}" onclick="${action}('${key}')">${f.icon} ${f.name}</button>`
+        ).join('') + `</div>`;
+}
+
 function renderAddForm(){
     const mode = ui.addFormMode || 'daily';
+    const form = FORMS[ui.addForm] ? ui.addForm : 'pilleri';
+    const fi = FORMS[form];
+    const track = !!ui.addTrack;
     const d = settings.defaults || {};
-    const dailyFields = mode === 'daily' ? `
-        <label for="newMedSize">Pillereitä pakkauksessa (valinnainen)</label>
-        <input type="number" id="newMedSize" min="1" step="1" placeholder="esim. 60" value="${esc(d.packageSize || '')}">
+    const dr = ui.draft || {};
 
-        <label for="newMedDose">Annos päivässä (valinnainen)</label>
-        <input type="number" id="newMedDose" min="0.5" step="0.5" placeholder="esim. 2" value="${esc(d.dosePerDay || '')}">
+    const seurantaRivi = mode === 'daily' ? `
+        <label style="margin-top:1rem">Pakkauksen riitto</label>
+        ${switchRow('Laske riitto annoksista','Kertoo montako päivää pakkaus kestää',track,'toggleAddTrack()')}` : '';
+
+    const maaraKentat = (mode === 'daily' && track) ? `
+        <label for="newMedSize">${fi.unit === 'ml' ? 'Nestettä pakkauksessa (ml)' : fi.unit.charAt(0).toUpperCase()+fi.unit.slice(1)+' pakkauksessa'} (valinnainen)</label>
+        <input type="number" id="newMedSize" min="1" step="1" placeholder="esim. 60" value="${esc(draftVal(dr,'newMedSize', d.packageSize || ''))}">
+
+        <label for="newMedDose">Annos päivässä (${esc(fi.per)}) (valinnainen)</label>
+        <input type="number" id="newMedDose" min="0.5" step="0.5" placeholder="esim. 2" value="${esc(draftVal(dr,'newMedDose', d.dosePerDay || ''))}">
         <div class="hint">Sovellus laskee joka päivä yhden annoksen otetuksi. Voit täyttää määrät myöhemmin.</div>
 
         <label for="newMedStart">Nykyisen pakkauksen aloituspäivä (valinnainen)</label>
-        <input type="date" id="newMedStart">` :
-        `<div class="hint">Tarvittaessa käytettävälle lääkkeelle ei tarvita annostustietoja – seurataan vain reseptiä ja pakkausmäärää.</div>`;
+        <input type="date" id="newMedStart" value="${esc(draftVal(dr,'newMedStart',''))}">`
+        : (mode === 'daily' ? `
+        <label for="newMedStart">Pakkaus aloitettu (valinnainen)</label>
+        <input type="date" id="newMedStart" value="${esc(draftVal(dr,'newMedStart',''))}">
+        <div class="hint">${fi.icon} ${fi.name}: pakkauksen riittoa ei lasketa, joten kortissa seurataan vain reseptiä ja pakkausten määrää.</div>`
+        : `<div class="hint">Tarvittaessa käytettävälle lääkkeelle ei tarvita annostustietoja – seurataan vain reseptiä ja pakkausmäärää.</div>`);
 
     return `<div class="form-card">
         <h3>➕ Lisää uusi lääke</h3>
@@ -1359,21 +1466,25 @@ function renderAddForm(){
             <button type="button" class="${mode==='asNeeded'?'active':''}" onclick="setAddFormMode('asNeeded')">🕐 Tarvittaessa</button>
         </div>
 
+        <label>Lääkemuoto</label>
+        ${formPicker(form, 'setAddForm')}
+
         <label for="newMedName">Lääkkeen nimi</label>
-        <input type="text" id="newMedName" placeholder="esim. Symbicort">
+        <input type="text" id="newMedName" placeholder="esim. Symbicort" value="${esc(draftVal(dr,'newMedName',''))}">
 
         <label for="newMedRx">Resepti voimassa asti (valinnainen)</label>
-        <input type="date" id="newMedRx">
+        <input type="date" id="newMedRx" value="${esc(draftVal(dr,'newMedRx',''))}">
         ${rxQuickPicks('newMedRx')}
 
         <label for="newMedTotal">Pakkauksia reseptillä yhteensä (valinnainen)</label>
-        <input type="number" id="newMedTotal" min="1" step="1" placeholder="esim. 3">
+        <input type="number" id="newMedTotal" min="1" step="1" placeholder="esim. 3" value="${esc(draftVal(dr,'newMedTotal',''))}">
 
         <label for="newMedUsed">Joista jo käytetty/ostettu (valinnainen)</label>
-        <input type="number" id="newMedUsed" min="0" step="1" value="1">
+        <input type="number" id="newMedUsed" min="0" step="1" value="${esc(draftVal(dr,'newMedUsed','1'))}">
         <div class="hint">Jos lisäät lääkkeen, jota jo käytät, tämä on yleensä 1.</div>
 
-        ${dailyFields}
+        ${seurantaRivi}
+        ${maaraKentat}
 
         <div class="form-error" id="newMedError"></div>
         <div class="btn-row">
@@ -1385,16 +1496,30 @@ function renderAddForm(){
 
 function renderEditForm(m){
     const mode = ui.editFormMode || m.mode || 'daily';
-    const dailyFields = mode === 'daily' ? `
-        <label for="editSize_${m.id}">Pillereitä pakkauksessa (valinnainen)</label>
-        <input type="number" id="editSize_${m.id}" min="1" step="1" value="${esc(m.packageSize||'')}">
+    const form = FORMS[ui.editForm] ? ui.editForm : formOf(m);
+    const fi = FORMS[form];
+    const track = ui.editTrack === null ? tracksDoses(m) : !!ui.editTrack;
+    const dr = ui.editDraft || {};
+    const v = (kentta, oletus) => esc(draftVal(dr, kentta + '_' + m.id, oletus));
 
-        <label for="editDose_${m.id}">Annos päivässä (valinnainen)</label>
-        <input type="number" id="editDose_${m.id}" min="0.5" step="0.5" value="${esc(m.dosePerDay||'')}">
+    const seurantaRivi = mode === 'daily' ? `
+        <label style="margin-top:1rem">Pakkauksen riitto</label>
+        ${switchRow('Laske riitto annoksista','Kertoo montako päivää pakkaus kestää',track,'toggleEditTrack()')}` : '';
+
+    const maaraKentat = (mode === 'daily' && track) ? `
+        <label for="editSize_${m.id}">${fi.unit === 'ml' ? 'Nestettä pakkauksessa (ml)' : fi.unit.charAt(0).toUpperCase()+fi.unit.slice(1)+' pakkauksessa'} (valinnainen)</label>
+        <input type="number" id="editSize_${m.id}" min="1" step="1" value="${v('editSize', m.packageSize||'')}">
+
+        <label for="editDose_${m.id}">Annos päivässä (${esc(fi.per)}) (valinnainen)</label>
+        <input type="number" id="editDose_${m.id}" min="0.5" step="0.5" value="${v('editDose', m.dosePerDay||'')}">
 
         <label for="editStart_${m.id}">Nykyisen pakkauksen aloituspäivä (valinnainen)</label>
-        <input type="date" id="editStart_${m.id}" value="${esc(m.startDate||'')}">` :
-        `<div class="hint">Tarvittaessa käytettävälle lääkkeelle ei tarvita annostustietoja.</div>`;
+        <input type="date" id="editStart_${m.id}" value="${v('editStart', m.startDate||'')}">`
+        : (mode === 'daily' ? `
+        <label for="editStart_${m.id}">Pakkaus aloitettu (valinnainen)</label>
+        <input type="date" id="editStart_${m.id}" value="${v('editStart', m.startDate||'')}">
+        <div class="hint">${fi.icon} ${fi.name}: pakkauksen riittoa ei lasketa. Aiemmat määrät säilyvät tallessa, jos kytket laskennan takaisin.</div>`
+        : `<div class="hint">Tarvittaessa käytettävälle lääkkeelle ei tarvita annostustietoja.</div>`);
 
     return `<div class="form-card">
         <h3>✏️ Muokkaa: ${esc(m.name)}</h3>
@@ -1404,20 +1529,24 @@ function renderEditForm(m){
             <button type="button" class="${mode==='asNeeded'?'active':''}" onclick="setEditFormMode('asNeeded')">🕐 Tarvittaessa</button>
         </div>
 
+        <label>Lääkemuoto</label>
+        ${formPicker(form, 'setEditForm')}
+
         <label for="editName_${m.id}">Lääkkeen nimi</label>
-        <input type="text" id="editName_${m.id}" value="${esc(m.name)}">
+        <input type="text" id="editName_${m.id}" value="${v('editName', m.name)}">
 
         <label for="editRx_${m.id}">Resepti voimassa asti (valinnainen)</label>
-        <input type="date" id="editRx_${m.id}" value="${esc(m.prescriptionValidUntil||'')}">
+        <input type="date" id="editRx_${m.id}" value="${v('editRx', m.prescriptionValidUntil||'')}">
         ${rxQuickPicks('editRx_'+m.id)}
 
         <label for="editTotal_${m.id}">Pakkauksia reseptillä yhteensä (valinnainen)</label>
-        <input type="number" id="editTotal_${m.id}" min="1" step="1" value="${esc(m.prescriptionTotalPackages||'')}">
+        <input type="number" id="editTotal_${m.id}" min="1" step="1" value="${v('editTotal', m.prescriptionTotalPackages||'')}">
 
         <label for="editUsed_${m.id}">Joista käytetty/ostettu (valinnainen)</label>
-        <input type="number" id="editUsed_${m.id}" min="0" step="1" value="${esc(m.prescriptionPackagesUsed||0)}">
+        <input type="number" id="editUsed_${m.id}" min="0" step="1" value="${v('editUsed', m.prescriptionPackagesUsed||0)}">
 
-        ${dailyFields}
+        ${seurantaRivi}
+        ${maaraKentat}
 
         <div class="form-error" id="editError_${m.id}"></div>
         <div class="btn-row">
@@ -1430,9 +1559,25 @@ function renderEditForm(m){
 function renderNewPackageForm(m){
     const today = getTodayString();
     const d = settings.defaults || {};
+    const fi = formInfo(m);
+    const track = tracksDoses(m);
     const rxHint = m.prescriptionValidUntil
         ? `Reseptillä käytetty ${m.prescriptionPackagesUsed||0}${m.prescriptionTotalPackages ? '/'+m.prescriptionTotalPackages : ''} pakkausta — tämä pakkaus kasvattaa laskuria automaattisesti.`
         : `Tälle lääkkeelle ei ole asetettu reseptiä.`;
+
+    const maarat = track ? `
+            <div class="pkg-form-row">
+                <div>
+                    <label for="pkgSize_${m.id}">${fi.unit === 'ml' ? 'Nestettä (ml)' : fi.unit.charAt(0).toUpperCase()+fi.unit.slice(1)}</label>
+                    <input type="number" id="pkgSize_${m.id}" min="1" step="1" value="${esc(m.packageSize || d.packageSize || '')}">
+                </div>
+                <div>
+                    <label for="pkgDose_${m.id}">Annos päivässä</label>
+                    <input type="number" id="pkgDose_${m.id}" min="0.5" step="0.5" value="${esc(m.dosePerDay || d.dosePerDay || '')}">
+                </div>
+            </div>` : `
+            <div class="hint" style="margin-bottom:.2rem">${fi.icon} ${fi.name}: määriä ei kysytä, koska riittoa ei lasketa.</div>`;
+
     return `<div class="pkg-form-card">
         <div class="pkg-form-header">
             <span class="pkg-form-tag">🆕 UUSI PAKKAUS</span>
@@ -1441,16 +1586,7 @@ function renderNewPackageForm(m){
         <div class="pkg-form-body">
             <div class="hint" style="margin-bottom:.6rem">Edellinen pakkaus siirtyy historiaan. ${rxHint}</div>
 
-            <div class="pkg-form-row">
-                <div>
-                    <label for="pkgSize_${m.id}">Pillereitä pakkauksessa</label>
-                    <input type="number" id="pkgSize_${m.id}" min="1" step="1" value="${esc(m.packageSize || d.packageSize || '')}">
-                </div>
-                <div>
-                    <label for="pkgDose_${m.id}">Annos päivässä</label>
-                    <input type="number" id="pkgDose_${m.id}" min="0.5" step="0.5" value="${esc(m.dosePerDay || d.dosePerDay || '')}">
-                </div>
-            </div>
+            ${maarat}
 
             <label for="pkgStart_${m.id}">Aloituspäivä</label>
             <input type="date" id="pkgStart_${m.id}" value="${today}">
@@ -1541,16 +1677,23 @@ function renderMedCard(m, isHero){
     }
 
     const endText = (f.endDate && packageEnd) ? ` (loppuu noin ${formatDate(packageEnd)})` : '';
+    const fi = formInfo(m);
+    const track = tracksDoses(m);
     const packageSection = hasPackageInfo
         ? `<div class="med-days-number">${packageDays}</div>
            <div class="med-days-label">päivää lääkettä jäljellä${endText}</div>
            ${f.badges ? packageBadge(packageDays) : ''}`
-        : `<div class="med-info-row" style="font-style:italic">📦 Pakkaustietoja ei asetettu — paina "Aloita uusi pakkaus" kun tiedät määrät</div>`;
+        : (track
+            ? `<div class="med-info-row" style="font-style:italic">📦 Pakkaustietoja ei asetettu — paina "Aloita uusi pakkaus" kun tiedät määrät</div>`
+            : `<div class="med-info-row">${fi.icon} ${esc(fi.name)} — seurataan reseptiä ja pakkauksia, ei päivälaskentaa</div>`);
+
+    const formChip = f.form ? `<span class="type-chip form-chip">${fi.icon} ${esc(fi.name)}</span>` : '';
 
     return `<div class="${cls}">
         <div class="med-header">
             <div style="flex:1;min-width:0">
                 <span class="type-chip">💊 Päivittäin</span>
+                ${formChip}
                 <h3>${esc(m.name)}</h3>
             </div>
             <div class="med-actions">
@@ -1563,7 +1706,7 @@ function renderMedCard(m, isHero){
 
         ${f.badges ? (rxBadge(rxDays) + refillBadge(m) + (f.cart ? kauppaBadge(m) : '')) : ''}
 
-        ${(f.pkgInfo && m.packageSize && m.dosePerDay) ? `<div class="med-info-row" style="margin-top:.6rem">📦 ${m.packageSize} pilleriä pakkauksessa · ${m.dosePerDay} pilleriä/pv</div>` : ''}
+        ${(f.pkgInfo && track && m.packageSize && m.dosePerDay) ? `<div class="med-info-row" style="margin-top:.6rem">📦 ${m.packageSize} ${esc(fi.unit)} pakkauksessa · ${m.dosePerDay} ${esc(fi.per)}</div>` : ''}
         ${(f.startDate && m.startDate) ? `<div class="med-info-row">📅 Pakkaus aloitettu ${formatDate(m.startDate)}</div>` : ''}
         ${f.rx ? (m.prescriptionValidUntil
             ? `<div class="med-info-row">📝 Resepti voimassa ${formatDate(m.prescriptionValidUntil)} asti</div>`
@@ -1597,6 +1740,7 @@ function renderAsNeededCard(m){
         <div class="med-header">
             <div style="flex:1;min-width:0">
                 <span class="type-chip asneeded">🕐 Tarvittaessa</span>
+                ${f.form ? `<span class="type-chip form-chip">${formInfo(m).icon} ${esc(formInfo(m).name)}</span>` : ''}
                 <h3>${esc(m.name)}</h3>
             </div>
             <div class="med-actions">
@@ -1720,6 +1864,13 @@ window.commitHue = () => saveSettingsSoon();
 window.setTextScale = (v) => { settings.textScale = +v; applyTheme(); render(); saveSettingsSoon(); };
 window.setDensity = (v) => { settings.density = v; applyTheme(); render(); saveSettingsSoon(); };
 window.setCardHighlight = (v) => { settings.cardHighlight = v; render(); saveSettingsSoon(); };
+window.toggleShowAllFilter = () => {
+    settings.showAllFilter = !settings.showAllFilter;
+    // Jos Kaikki-nappi otetaan pois käytöstä sen ollessa valittuna,
+    // siirrytään päivittäisiin ettei valinta jää olemattomaan nappiin.
+    if(!settings.showAllFilter && ui.medFilter === 'all') ui.medFilter = 'daily';
+    render(); saveSettingsSoon();
+};
 
 // Väriveistin päivittää värin heti mutta piirtää näkymän uusiksi
 // vasta kun valinta on valmis, jotta veistin ei sulkeudu kesken.
@@ -2018,6 +2169,9 @@ function renderSettingsView(){
             <button class="${t.density==='tiivis'?'on':''}" onclick="setDensity('tiivis')" style="font-size:.85rem">Tiivis</button>
         </div>
 
+        <label style="margin-top:1.1rem">Etusivun kategoriat</label>
+        ${switchRow('Kaikki-nappi','Kolmas nappi joka näyttää molemmat ryhmät kerralla',!!t.showAllFilter,"toggleShowAllFilter()")}
+
         <label style="margin-top:1.1rem">Mitä lääkekortissa näytetään</label>
         ${switchRow('Pakkauksen tiedot','Pillerimäärä ja annos päivässä',f.pkgInfo,"toggleCardField('pkgInfo')")}
         ${switchRow('Aloituspäivä','Milloin nykyinen pakkaus aloitettiin',f.startDate,"toggleCardField('startDate')")}
@@ -2025,6 +2179,7 @@ function renderSettingsView(){
         ${switchRow('Reseptirivi','Reseptin voimassaolo',f.rx,"toggleCardField('rx')")}
         ${switchRow('Varoitusmerkit','Keltaiset ja punaiset merkit',f.badges,"toggleCardField('badges')")}
         ${switchRow('Kauppalista','Nappi ja merkki kauppalistasta',f.cart,"toggleCardField('cart')")}
+        ${switchRow('Lääkemuoto','Merkki jossa lukee pilleri, tahna tai muu muoto',f.form,"toggleCardField('form')")}
     `;
 
     // --- Hälytysrajat ---
@@ -2186,10 +2341,19 @@ function renderDashboard(){
 
     // Kategoriasuodatin. Näkyy vasta kun molempia tyyppejä on olemassa,
     // jottei yhden lääkkeen listan päällä ole turhaa valikkoa.
-    const suodatin = ui.medFilter || 'all';
-    if(dailyMeds.length && asNeededMeds.length){
+    const molemmat = dailyMeds.length > 0 && asNeededMeds.length > 0;
+    const naytaKaikki = !!settings.showAllFilter;
+
+    // Suodatin päätellään asetuksesta: ilman Kaikki-nappia listalla on
+    // aina jokin ryhmä valittuna. Jos vain toista tyyppiä on olemassa,
+    // suodatin ohitetaan kokonaan ettei ruutu jää tyhjäksi.
+    let suodatin = ui.medFilter || (naytaKaikki ? 'all' : 'daily');
+    if(!naytaKaikki && suodatin === 'all') suodatin = 'daily';
+    if(!molemmat) suodatin = 'all';
+
+    if(molemmat){
         html += `<div class="filter-row">
-            <button class="fchip ${suodatin==='all'?'on':''}" onclick="setMedFilter('all')">Kaikki <span class="n">${allMeds.length}</span></button>
+            ${naytaKaikki ? `<button class="fchip ${suodatin==='all'?'on':''}" onclick="setMedFilter('all')">Kaikki <span class="n">${allMeds.length}</span></button>` : ''}
             <button class="fchip ${suodatin==='daily'?'on':''}" onclick="setMedFilter('daily')">💊 Päivittäin <span class="n">${dailyMeds.length}</span></button>
             <button class="fchip ${suodatin==='asNeeded'?'on':''}" onclick="setMedFilter('asNeeded')">🕐 Tarvittaessa <span class="n">${asNeededMeds.length}</span></button>
         </div>`;

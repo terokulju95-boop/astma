@@ -555,7 +555,7 @@ import {
 //  numeron muuttaminen pakottaa selaimen hakemaan uuden workerin
 //  eikä välimuistiin voi jäädä vanhaa versiota roikkumaan.
 // ============================================================
-const APP_VERSION = '2026.09.14';
+const APP_VERSION = '2026.11.10';
 
 const firebaseConfig = {
     apiKey: "AIzaSyDswdEF9J0gsHJH6Zo_8BGZrf8DVG3FwYc",
@@ -573,7 +573,7 @@ const DATA_DOC = doc(db, "astmalaake", "data");
 
 // Asetusnäkymän PIN. Tämä on kevyt suoja omalle puhelimelle, ei
 // tietoturvalukko: koodi on luettavissa sivun lähdekoodista.
-const SETTINGS_PIN = '3661';
+const SETTINGS_PIN = '1234';
 
 // ============================================================
 //  ASETUKSET
@@ -923,8 +923,17 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
+// Lääkkeen tunniste päätyy nappien onclick-koodiin, joten siinä saa olla
+// vain turvallisia merkkejä. Sovellus itse tekee aina tällaisia (uid()).
+const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/;
+function poistaVaaratTunnisteet(meds){
+    Object.keys(meds).forEach(id => { if(!SAFE_ID.test(id)) delete meds[id]; });
+    return meds;
+}
+
 function normalizeLoadedData(parsed){
     if(parsed && parsed.medicines && typeof parsed.medicines === 'object'){
+        poistaVaaratTunnisteet(parsed.medicines);
         Object.values(parsed.medicines).forEach(m => {
             if(!m.mode) m.mode = 'daily';
             if(typeof m.prescriptionTotalPackages === 'undefined') m.prescriptionTotalPackages = null;
@@ -2435,7 +2444,7 @@ window.confirmImport = async () => {
     } else {
         const meds = {};
         Object.entries(pendingImport.medicines).forEach(([id, m]) => {
-            if(!m || typeof m !== 'object' || !m.name) return;
+            if(!SAFE_ID.test(id) || !m || typeof m !== 'object' || !m.name) return;
             meds[id] = {
                 name: String(m.name),
                 mode: m.mode === 'asNeeded' ? 'asNeeded' : 'daily',
